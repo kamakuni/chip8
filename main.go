@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	sdl "github.com/veandco/go-sdl2/sdl"
 )
 
 // NewFonts creates fonts array
@@ -79,6 +80,18 @@ func (e Emulator) Print() {
 }
 
 func main() {
+	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
+		panic(err)
+	}
+	defer sdl.Quit()
+
+	window, err := sdl.CreateWindow("CHIP-8 Emulator", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
+		64, 32, sdl.WINDOW_SHOWN)
+	if err != nil {
+		panic(err)
+	}
+	defer window.Destroy()
+
 	fmt.Println("start")
 	emu := NewEmulator()
 	emu.Print()
