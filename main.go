@@ -1,8 +1,6 @@
 package main
 
 import (
-	"binary"
-	"encoding/binary"
 	"fmt"
 	sdl "github.com/veandco/go-sdl2/sdl"
 	"os"
@@ -72,6 +70,23 @@ func NewEmulator(fonts [80]uint8) *Emulator {
 	}
 }
 
+func (e Emulator) load(filepath string) {
+	file, err := os.Open(filepath)
+	if err != nil {
+		// TODO:logging
+		panic(err)
+	}
+	defer file.Close()
+
+	stat, err := file.Stat()
+	if err != nil {
+		// TODO:logging
+		panic(err)
+	}
+	fmt.Printf("file size:%v", stat.Size())
+
+}
+
 // Print Emulator status
 func (e Emulator) Print() {
 	fmt.Printf("opcode:%v\n", e.opcode)
@@ -88,6 +103,18 @@ func (e Emulator) Print() {
 }
 
 func main() {
+
+	fmt.Println("start")
+	if len(os.Args) != 2 {
+		// TODO:logging
+		panic(nil)
+	}
+	filepath := os.Args[1]
+	fonts := NewFonts()
+	emu := NewEmulator(fonts)
+	emu.load(filepath)
+	emu.Print()
+
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
 		// TODO:logging
 		panic(err)
@@ -102,8 +129,4 @@ func main() {
 	}
 	defer window.Destroy()
 
-	fmt.Println("start")
-	fonts := NewFonts()
-	emu := NewEmulator(fonts)
-	emu.Print()
 }
