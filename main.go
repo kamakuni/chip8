@@ -1,8 +1,11 @@
 package main
 
 import (
+	"binary"
+	"encoding/binary"
 	"fmt"
 	sdl "github.com/veandco/go-sdl2/sdl"
+	"os"
 )
 
 // NewFonts creates fonts array
@@ -55,10 +58,15 @@ type Emulator struct {
 }
 
 // NewEmulator creates Emulator
-func NewEmulator() *Emulator {
+func NewEmulator(fonts [80]uint8) *Emulator {
+	var memory [4096]uint8
+	for i, font := range fonts {
+		memory[i] = font
+	}
 	return &Emulator{
 		pc:     0x200,
 		opcode: 0,
+		memory: memory,
 		i:      0,
 		sp:     0,
 	}
@@ -81,6 +89,7 @@ func (e Emulator) Print() {
 
 func main() {
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
+		// TODO:logging
 		panic(err)
 	}
 	defer sdl.Quit()
@@ -88,14 +97,13 @@ func main() {
 	window, err := sdl.CreateWindow("CHIP-8 Emulator", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
 		64, 32, sdl.WINDOW_SHOWN)
 	if err != nil {
+		// TODO:logging
 		panic(err)
 	}
 	defer window.Destroy()
 
 	fmt.Println("start")
-	emu := NewEmulator()
-	emu.Print()
 	fonts := NewFonts()
-	fmt.Println(fonts[0])
-	fmt.Println(fonts[79])
+	emu := NewEmulator(fonts)
+	emu.Print()
 }
