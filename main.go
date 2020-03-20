@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
 	sdl "github.com/veandco/go-sdl2/sdl"
 	"os"
@@ -83,8 +84,20 @@ func (e Emulator) load(filepath string) {
 		// TODO:logging
 		panic(err)
 	}
-	fmt.Printf("file size:%v", stat.Size())
+	fmt.Printf("file size:%v\n", stat.Size())
 
+	buf := make([]byte, stat.Size())
+	err = binary.Read(file, binary.BigEndian, &buf)
+	if err != nil {
+		// TODO:logging
+		panic(err)
+	}
+
+	for i, b := range buf {
+		e.memory[int(e.pc)+i] = b
+		fmt.Printf("%x", e.memory[int(e.pc)+i])
+	}
+	fmt.Printf("memory:%v\n", e.memory)
 }
 
 // Print Emulator status
