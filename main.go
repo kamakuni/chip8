@@ -71,7 +71,7 @@ func NewEmulator(fonts [80]uint8) *Emulator {
 	}
 }
 
-func (e Emulator) load(filepath string) {
+func (e *Emulator) load(filepath string) {
 	file, err := os.Open(filepath)
 	if err != nil {
 		// TODO:logging
@@ -97,11 +97,10 @@ func (e Emulator) load(filepath string) {
 		e.memory[int(e.pc)+i] = b
 		fmt.Printf("%x", e.memory[int(e.pc)+i])
 	}
-	fmt.Printf("memory:%v\n", e.memory)
 }
 
 // Print Emulator status
-func (e Emulator) Print() {
+func (e *Emulator) Print() {
 	fmt.Printf("opcode:%v\n", e.opcode)
 	fmt.Printf("memory:%v\n", e.memory)
 	fmt.Printf("v:%v\n", e.v)
