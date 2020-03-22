@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	sdl "github.com/veandco/go-sdl2/sdl"
+	"log"
 	"os"
 )
 
@@ -43,16 +44,16 @@ func NewFonts() [80]uint8 {
 }
 
 type Emulator struct {
-	opcode     uint16        // two bytes opcodes
-	memory     [4096]uint8   // 4K memory
+	Opcode     uint16        // two bytes opcodes
+	Memory     [4096]uint8   // 4K memory
 	v          [16]uint8     // 15 8-bit registers for general purpose and one for "carry-flag"
-	i          uint16        // index register
-	pc         uint16        // program counter
+	I          uint16        // index register
+	Pc         uint16        // program counter
 	gfx        [64 * 32]bool // 2048 black or white pixels
 	delayTimer uint8         // Timer registor for general purpose
 	soundTimer uint8         // Timer registor for sound
 	stack      [16]uint16    // to store current pc
-	sp         uint16        // stack pointer
+	Sp         uint16        // stack pointer
 	key        [16]uint8     // to store current stats of key
 }
 
@@ -63,11 +64,11 @@ func NewEmulator(fonts [80]uint8) *Emulator {
 		memory[i] = font
 	}
 	return &Emulator{
-		pc:     0x200,
-		opcode: 0,
-		memory: memory,
-		i:      0,
-		sp:     0,
+		Pc:     0x200,
+		Opcode: 0,
+		Memory: memory,
+		I:      0,
+		Sp:     0,
 	}
 }
 
@@ -94,23 +95,23 @@ func (e *Emulator) load(filepath string) {
 	}
 
 	for i, b := range buf {
-		e.memory[int(e.pc)+i] = b
-		fmt.Printf("%x", e.memory[int(e.pc)+i])
+		e.Memory[int(e.Pc)+i] = b
+		fmt.Printf("%x", e.Memory[int(e.Pc)+i])
 	}
 }
 
 // Print Emulator status
 func (e *Emulator) Print() {
-	fmt.Printf("opcode:%v\n", e.opcode)
-	fmt.Printf("memory:%v\n", e.memory)
+	fmt.Printf("opcode:%v\n", e.Opcode)
+	fmt.Printf("memory:%v\n", e.Memory)
 	fmt.Printf("v:%v\n", e.v)
-	fmt.Printf("i:%v\n", e.i)
-	fmt.Printf("pc:%v\n", e.pc)
+	fmt.Printf("i:%v\n", e.I)
+	fmt.Printf("pc:%v\n", e.Pc)
 	fmt.Printf("gfx:%v\n", e.gfx)
 	fmt.Printf("delayTimer:%v\n", e.delayTimer)
 	fmt.Printf("soundTimer:%v\n", e.soundTimer)
 	fmt.Printf("stack:%v\n", e.stack)
-	fmt.Printf("sp:%v\n", e.sp)
+	fmt.Printf("sp:%v\n", e.Sp)
 	fmt.Printf("key:%v\n", e.key)
 }
 
@@ -140,5 +141,17 @@ func main() {
 		panic(err)
 	}
 	defer window.Destroy()
+
+	// Fetch opcode
+	// Decode opcode
+	emu.Opcode = uint16(emu.Memory[emu.Pc]<<8) | uint16(emu.Memory[emu.Pc+1])
+	switch emu.Opcode & 0xF000 {
+	case 0xA000:
+		emu.I = emu.Opcode & 0x0FFF
+		emu.Pc += 2
+		break
+	default:
+		log.Fatalf("Unexpected opcode 0x%x", emu.Opcode)
+	}
 
 }
