@@ -44,17 +44,18 @@ func NewFonts() [80]uint8 {
 }
 
 type Emulator struct {
-	Opcode     uint16        // two bytes opcodes
-	Memory     [4096]uint8   // 4K memory
-	v          [16]uint8     // 15 8-bit registers for general purpose and one for "carry-flag"
-	I          uint16        // index register
-	Pc         uint16        // program counter
-	gfx        [64 * 32]bool // 2048 black or white pixels
-	delayTimer uint8         // Timer registor for general purpose
-	soundTimer uint8         // Timer registor for sound
-	stack      [16]uint16    // to store current pc
-	Sp         uint16        // stack pointer
-	key        [16]uint8     // to store current stats of key
+	Opcode     uint16       // two bytes opcodes
+	Memory     [4096]uint8  // 4K memory
+	v          [16]uint8    // 15 8-bit registers for general purpose and one for "carry-flag"
+	I          uint16       // index register
+	Pc         uint16       // program counter
+	Gfx        [32][64]bool // 2048 black or white pixels
+	delayTimer uint8        // Timer registor for general purpose
+	soundTimer uint8        // Timer registor for sound
+	Stack      [16]uint16   // to store current pc
+	Sp         uint16       // stack pointer
+	key        [16]uint8    // to store current stats of key
+	ShouldDraw bool
 }
 
 // NewEmulator creates Emulator
@@ -116,6 +117,14 @@ func (e *Emulator) Fetch() uint16 {
 
 func (e *Emulator) Decode(opcode uint16) {
 	switch opcode & 0xF000 {
+	case 0x0000:
+		switch opcode & 0x000F {
+		case 0x000:
+			e.Gfx = [32][64]bool{}
+			e.ShouldDraw = true
+			e.Pc += 2
+		}
+		break
 	case 0xA000:
 		e.I = opcode & 0x0FFF
 		e.Pc += 2
@@ -132,10 +141,10 @@ func (e *Emulator) Print() {
 	fmt.Printf("v:%v\n", e.v)
 	fmt.Printf("i:%v\n", e.I)
 	fmt.Printf("pc:%v\n", e.Pc)
-	fmt.Printf("gfx:%v\n", e.gfx)
+	fmt.Printf("gfx:%v\n", e.Gfx)
 	fmt.Printf("delayTimer:%v\n", e.delayTimer)
 	fmt.Printf("soundTimer:%v\n", e.soundTimer)
-	fmt.Printf("stack:%v\n", e.stack)
+	fmt.Printf("stack:%v\n", e.Stack)
 	fmt.Printf("sp:%v\n", e.Sp)
 	fmt.Printf("key:%v\n", e.key)
 }
@@ -167,16 +176,7 @@ func main() {
 	}
 	defer window.Destroy()
 
-	// Fetch opcode
-	// Decode opcode
-	emu.Opcode = uint16(emu.Memory[emu.Pc]<<8) | uint16(emu.Memory[emu.Pc+1])
-	switch emu.Opcode & 0xF000 {
-	case 0xA000:
-		emu.I = emu.Opcode & 0x0FFF
-		emu.Pc += 2
-		break
-	default:
-		log.Fatalf("Unexpected opcode 0x%x", emu.Opcode)
-	}
+	opcode := emu.Fetch()
+	emu.Decode(opcode)
 
 }
