@@ -72,6 +72,14 @@ func NewEmulator(fonts [80]uint8) *Emulator {
 	}
 }
 
+// Load loads data to memory
+func (e *Emulator) Load(data []byte) {
+	for i, b := range data {
+		e.Memory[int(e.Pc)+i] = b
+		fmt.Printf("load byte:0x%x", e.Memory[int(e.Pc)+i])
+	}
+}
+
 func (e *Emulator) load(filepath string) {
 	file, err := os.Open(filepath)
 	if err != nil {
@@ -97,6 +105,23 @@ func (e *Emulator) load(filepath string) {
 	for i, b := range buf {
 		e.Memory[int(e.Pc)+i] = b
 		fmt.Printf("%x", e.Memory[int(e.Pc)+i])
+	}
+}
+
+func (e *Emulator) Fetch() uint16 {
+	op1 := uint16(e.Memory[int(e.Pc)])
+	op2 := uint16(e.Memory[int(e.Pc)+1])
+	return op1<<8 | op2
+}
+
+func (e *Emulator) Decode(opcode uint16) {
+	switch opcode & 0xF000 {
+	case 0xA000:
+		e.I = opcode & 0x0FFF
+		e.Pc += 2
+		break
+	default:
+		log.Fatalf("Unexpected opcode 0x%x", opcode)
 	}
 }
 
