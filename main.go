@@ -119,23 +119,35 @@ func (e *Emulator) Decode(opcode uint16) {
 	switch opcode & 0xF000 {
 	case 0x0000:
 		switch opcode & 0x000F {
-		case 0x000:
-			// Clear the screen
+		case 0x0000:
+			// CLS: Clear the screen
 			e.Gfx = [32][64]bool{}
 			e.ShouldDraw = true
 			e.Pc += 2
+			break
+		case 0x000E:
+			e.Pc = e.Stack[e.Sp]
+			e.Sp--
+			break
+		default:
+			log.Fatalf("Unexpected opcode 0x%x", opcode)
 		}
 		break
+	case 0x1000:
+		// Goto NNN: Jump to address NNN
+		e.Pc = opcode & 0x0FFF
+		break
 	case 0x2000:
-		// Call the subroutine at address NNN
+		// CALL: Call the subroutine at address NNN
 		// Because we will need to temporary jump to address NNN,
 		// it means that we should store the current address of the program counter in the stack
 		// After storing, increase the stack pointer and set the program counter to the address NNN
 		e.Stack[e.Sp] = e.Pc
 		e.Sp++
 		e.Pc = opcode & 0x0FFF
+		break
 	case 0xA000:
-		// Sets I to the address NNN.
+		// LD: Sets I to the address NNN.
 		e.I = opcode & 0x0FFF
 		e.Pc += 2
 		break

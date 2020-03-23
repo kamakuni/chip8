@@ -32,7 +32,41 @@ func TestEmulator_Decode0x0000(t *testing.T) {
 	}
 }
 
-func TestEmulator_Decode0x2000(t *testing.T) {
+func TestEmulator_Decode0x000E(t *testing.T) {
+	fonts := NewFonts()
+	emu := NewEmulator(fonts)
+	data := make([]byte, 2)
+	data[0] = 0x20
+	data[1] = 0xF0
+	data[2] = 0x00
+	data[3] = 0x0E
+	emu.Load(data)
+	opcode := emu.Fetch()
+	emu.Decode(opcode)
+	actual := emu.Pc
+	expected := uint16(0x00F0)
+	if actual != expected {
+		t.Errorf("got: 0x%x,but expected: 0x%x", actual, expected)
+	}
+}
+
+func TestEmulator_Decode0x1NNN(t *testing.T) {
+	fonts := NewFonts()
+	emu := NewEmulator(fonts)
+	data := make([]byte, 2)
+	data[0] = 0x10
+	data[1] = 0xF0
+	emu.Load(data)
+	opcode := emu.Fetch()
+	emu.Decode(opcode)
+	actual := emu.Pc
+	expected := uint16(0x00F0)
+	if actual != expected {
+		t.Errorf("got: 0x%x,but expected: 0x%x", actual, expected)
+	}
+}
+
+func TestEmulator_Decode0x2NNN(t *testing.T) {
 	fonts := NewFonts()
 	emu := NewEmulator(fonts)
 	data := make([]byte, 2)
