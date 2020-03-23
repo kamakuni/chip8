@@ -174,6 +174,11 @@ func (e *Emulator) Decode(opcode uint16) {
 		x := opcode & 0x0F00 >> 8
 		e.V[x] = uint8(opcode & 0x00FF)
 		e.Pc += 2
+	case 0x7000:
+		// 	Adds NN to VX. (Carry flag is not changed)
+		x := opcode & 0x0F00 >> 8
+		e.V[x] += uint8(opcode & 0x00FF)
+		e.Pc += 2
 	case 0xA000:
 		// LD: Sets I to the address NNN.
 		e.I = opcode & 0x0FFF
