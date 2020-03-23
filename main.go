@@ -46,7 +46,7 @@ func NewFonts() [80]uint8 {
 type Emulator struct {
 	Opcode     uint16       // two bytes opcodes
 	Memory     [4096]uint8  // 4K memory
-	v          [16]uint8    // 15 8-bit registers for general purpose and one for "carry-flag"
+	V          [16]uint8    // 15 8-bit registers for general purpose and one for "carry-flag"
 	I          uint16       // index register
 	Pc         uint16       // program counter
 	Gfx        [32][64]bool // 2048 black or white pixels
@@ -116,6 +116,7 @@ func (e *Emulator) Fetch() uint16 {
 }
 
 func (e *Emulator) Decode(opcode uint16) {
+	// https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
 	switch opcode & 0xF000 {
 	case 0x0000:
 		switch opcode & 0x000F {
@@ -146,6 +147,28 @@ func (e *Emulator) Decode(opcode uint16) {
 		e.Sp++
 		e.Pc = opcode & 0x0FFF
 		break
+	case 0x3000:
+		// Skips the next instruction if VX equals NN.
+		// (Usually the next instruction is a jump to skip a code block)
+		x := opcode & 0x0F00 >> 8
+		if int(e.V[x]) == int(opcode&0x00FF) {
+			e.Pc += 2
+		}
+	case 0x4000:
+		// Skips the next instruction if VX doesn't equal NN.
+		// (Usually the next instruction is a jump to skip a code block)
+		x := opcode & 0x0F00 >> 8
+		if int(e.V[x]) != int(opcode&0x00FF) {
+			e.Pc += 2
+		}
+	case 0x5000:
+		// Skips the next instruction if VX equals VY.
+		// (Usually the next instruction is a jump to skip a code block)
+		x := opcode & 0x0F00 >> 8
+		y := opcode & 0x00F0 >> 4
+		if e.V[x] == e.V[y] {
+			e.Pc += 2
+		}
 	case 0xA000:
 		// LD: Sets I to the address NNN.
 		e.I = opcode & 0x0FFF
@@ -160,7 +183,7 @@ func (e *Emulator) Decode(opcode uint16) {
 func (e *Emulator) Print() {
 	fmt.Printf("opcode:%v\n", e.Opcode)
 	fmt.Printf("memory:%v\n", e.Memory)
-	fmt.Printf("v:%v\n", e.v)
+	fmt.Printf("v:%v\n", e.V)
 	fmt.Printf("i:%v\n", e.I)
 	fmt.Printf("pc:%v\n", e.Pc)
 	fmt.Printf("gfx:%v\n", e.Gfx)
