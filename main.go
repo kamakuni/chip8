@@ -180,11 +180,43 @@ func (e *Emulator) Decode(opcode uint16) {
 		e.V[x] += uint8(opcode & 0x00FF)
 		e.Pc += 2
 	case 0x8000:
-		// Sets VX to the value of VY.
-		x := opcode & 0x0F00 >> 8
-		y := opcode & 0x00F0 >> 4
-		e.V[x] = e.V[y]
-		e.Pc += 2
+		switch opcode & 0x000F {
+		case 0:
+			// Sets VX to the value of VY.
+			x := opcode & 0x0F00 >> 8
+			y := opcode & 0x00F0 >> 4
+			e.V[x] = e.V[y]
+			e.Pc += 2
+			break
+		case 1:
+			// Sets VX to the value of VY.
+			x := opcode & 0x0F00 >> 8
+			y := opcode & 0x00F0 >> 4
+			e.V[x] = e.V[x] | e.V[y]
+			e.Pc += 2
+			break
+		case 2:
+			// Sets VX to the value of VY.
+			x := opcode & 0x0F00 >> 8
+			y := opcode & 0x00F0 >> 4
+			e.V[x] = e.V[x] & e.V[y]
+			e.Pc += 2
+			break
+		case 3:
+			break
+		case 4:
+			break
+		case 5:
+			break
+		case 6:
+			break
+		case 7:
+			break
+		case 0xE:
+			break
+		default:
+			log.Fatalf("Unexpected opcode 0x%x", opcode)
+		}
 	case 0xA000:
 		// LD: Sets I to the address NNN.
 		e.I = opcode & 0x0FFF
