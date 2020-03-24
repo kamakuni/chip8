@@ -220,6 +220,24 @@ func TestEmulator_Decode0x8XY2(t *testing.T) {
 	}
 }
 
+func TestEmulator_Decode0x8XY3(t *testing.T) {
+	fonts := NewFonts()
+	emu := NewEmulator(fonts)
+	data := make([]byte, 2)
+	data[0] = 0x8F
+	data[1] = 0xE3
+	emu.Load(data)
+	emu.V[14] = 0x0F
+	emu.V[15] = 0xFF
+	opcode := emu.Fetch()
+	emu.Decode(opcode)
+	actual := int(emu.V[15])
+	expected := 0xF0
+	if actual != expected {
+		t.Errorf("got: 0x%x,but expected: 0x%x", actual, expected)
+	}
+}
+
 func TestEmulator_Decode0xANNN(t *testing.T) {
 	fonts := NewFonts()
 	emu := NewEmulator(fonts)

@@ -189,20 +189,25 @@ func (e *Emulator) Decode(opcode uint16) {
 			e.Pc += 2
 			break
 		case 1:
-			// Sets VX to the value of VY.
+			// 	Sets VX to VX or VY. (Bitwise OR operation)
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] | e.V[y]
 			e.Pc += 2
 			break
 		case 2:
-			// Sets VX to the value of VY.
+			// Sets VX to VX and VY. (Bitwise AND operation)
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] & e.V[y]
 			e.Pc += 2
 			break
 		case 3:
+			// Sets VX to VX xor VY.
+			x := opcode & 0x0F00 >> 8
+			y := opcode & 0x00F0 >> 4
+			e.V[x] = e.V[x] ^ e.V[y]
+			e.Pc += 2
 			break
 		case 4:
 			break
