@@ -179,6 +179,12 @@ func (e *Emulator) Decode(opcode uint16) {
 		x := opcode & 0x0F00 >> 8
 		e.V[x] += uint8(opcode & 0x00FF)
 		e.Pc += 2
+	case 0x8000:
+		// Sets VX to the value of VY.
+		x := opcode & 0x0F00 >> 8
+		y := opcode & 0x00F0 >> 4
+		e.V[x] = e.V[y]
+		e.Pc += 2
 	case 0xA000:
 		// LD: Sets I to the address NNN.
 		e.I = opcode & 0x0FFF
