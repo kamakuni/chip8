@@ -210,8 +210,16 @@ func (e *Emulator) Decode(opcode uint16) {
 			e.Pc += 2
 			break
 		case 4:
+			x := opcode & 0x0F00 >> 8
+			y := opcode & 0x00F0 >> 4
+			e.V[x] += e.V[y]
+			e.Pc += 2
 			break
 		case 5:
+			x := opcode & 0x0F00 >> 8
+			y := opcode & 0x00F0 >> 4
+			e.V[x] -= e.V[y]
+			e.Pc += 2
 			break
 		case 6:
 			break
