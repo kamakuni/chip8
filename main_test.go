@@ -268,7 +268,7 @@ func TestEmulator_Decode0x8XY5(t *testing.T) {
 	opcode := emu.Fetch()
 	emu.Decode(opcode)
 	actual := int(emu.V[15])
-	expected := 0x0C
+	expected := 0x0D
 	if actual != expected {
 		t.Errorf("got: 0x%x,but expected: 0x%x", actual, expected)
 	}
