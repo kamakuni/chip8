@@ -222,10 +222,20 @@ func (e *Emulator) Decode(opcode uint16) {
 			e.Pc += 2
 			break
 		case 6:
+			x := opcode & 0x0F00 >> 8
+			e.V[x] >>= 1
+			e.Pc += 2
 			break
 		case 7:
+			x := opcode & 0x0F00 >> 8
+			y := opcode & 0x00F0 >> 4
+			e.V[x] = e.V[y] - e.V[x]
+			e.Pc += 2
 			break
 		case 0xE:
+			x := opcode & 0x0F00 >> 8
+			e.V[x] <<= 1
+			e.Pc += 2
 			break
 		default:
 			log.Fatalf("Unexpected opcode 0x%x", opcode)
