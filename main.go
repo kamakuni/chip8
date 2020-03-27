@@ -210,30 +210,47 @@ func (e *Emulator) Decode(opcode uint16) {
 			e.Pc += 2
 			break
 		case 4:
+			// Add the value of register VY to register VX
+			// Set VF to 01 if a carry occurs
+			// Set VF to 00 if a carry does not occur
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] += e.V[y]
 			e.Pc += 2
 			break
 		case 5:
+			// Subtract the value of register VY from register VX
+			// Set VF to 00 if a borrow occurs
+			// Set VF to 01 if a borrow does not occur
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] -= e.V[y]
 			e.Pc += 2
 			break
 		case 6:
+			// Store the value of register VY shifted right one bit in register VX¹
+			// Set register VF to the least significant bit prior to the shift
+			// VY is unchanged
 			x := opcode & 0x0F00 >> 8
+			e.V[0xF] = uint8(opcode & 0x0001)
 			e.V[x] >>= 1
 			e.Pc += 2
 			break
 		case 7:
+			// Set register VX to the value of VY minus VX
+			// Set VF to 00 if a borrow occurs
+			// Set VF to 01 if a borrow does not occur
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[y] - e.V[x]
 			e.Pc += 2
 			break
 		case 0xE:
+			// Store the value of register VY shifted left one bit in register VX¹
+			// Set register VF to the most significant bit prior to the shift
+			// VY is unchanged
 			x := opcode & 0x0F00 >> 8
+			e.V[0xF] = uint8(opcode & 0x0001)
 			e.V[x] <<= 1
 			e.Pc += 2
 			break
