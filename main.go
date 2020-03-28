@@ -215,6 +215,11 @@ func (e *Emulator) Decode(opcode uint16) {
 			// Set VF to 00 if a carry does not occur
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
+			if e.V[x]+e.V[y] > 0xFF {
+				e.V[0xF] = 0x1
+			} else {
+				e.V[0xF] = 0x0
+			}
 			e.V[x] += e.V[y]
 			e.Pc += 2
 			break
