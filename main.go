@@ -5,6 +5,7 @@ import (
 	"fmt"
 	sdl "github.com/veandco/go-sdl2/sdl"
 	"log"
+	"math/rand"
 	"os"
 )
 
@@ -287,6 +288,10 @@ func (e *Emulator) Decode(opcode uint16) {
 		break
 	case 0xB000:
 		e.Pc = opcode&0x0FFF + uint16(e.V[0])
+	case 0xC000:
+		x := opcode & 0x0F00 >> 8
+		mask := opcode & 0x00FF
+		e.V[x] = uint8(rand.Intn(256)) & uint8(mask)
 	default:
 		log.Fatalf("Unexpected opcode 0x%x", opcode)
 	}
@@ -334,7 +339,50 @@ func main() {
 	}
 	defer window.Destroy()
 
-	opcode := emu.Fetch()
-	emu.Decode(opcode)
+	fmt.Println("loop begin")
+	running := true
+	for running {
+		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+			fmt.Println("poll event")
+			switch ty := event.(type) {
+			case *sdl.KeyboardEvent:
+				fmt.Println("kenyboad event")
+				keyCode := ty.Keysym.Sym
+				keys := ""
+				// Modifier keys
+				switch ty.Keysym.Mod {
+				case sdl.KMOD_LALT:
+					keys += "Left Alt"
+				case sdl.KMOD_LCTRL:
+					keys += "Left Control"
+				case sdl.KMOD_LSHIFT:
+					keys += "Left Shift"
+				case sdl.KMOD_LGUI:
+					keys += "Left Meta or Windows key"
+				case sdl.KMOD_RALT:
+					keys += "Right Alt"
+				case sdl.KMOD_RCTRL:
+					keys += "Right Control"
+				case sdl.KMOD_RSHIFT:
+					keys += "Right Shift"
+				case sdl.KMOD_RGUI:
+					keys += "Right Meta or Windows key"
+				case sdl.KMOD_NUM:
+					keys += "Num Lock"
+				case sdl.KMOD_CAPS:
+					keys += "Caps Lock"
+				case sdl.KMOD_MODE:
+					keys += "AltGr Key"
+				}
+				fmt.Printf("Key down:%v", keyCode)
+			case *sdl.QuitEvent:
+				fmt.Println("Quit")
+				running = false
+				break
+			}
+		}
+	}
+	//opcode := emu.Fetch()
+	//emu.Decode(opcode)
 
 }
