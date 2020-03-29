@@ -359,3 +359,20 @@ func TestEmulator_Decode0xANNN(t *testing.T) {
 		t.Errorf("got: 0x%x,but expected: 0x%x", actual, expected)
 	}
 }
+
+func TestEmulator_Decode0xBNNN(t *testing.T) {
+	fonts := NewFonts()
+	emu := NewEmulator(fonts)
+	data := make([]byte, 2)
+	data[0] = 0xB0
+	data[1] = 0x01
+	emu.Load(data)
+	emu.V[0] = 1
+	opcode := emu.Fetch()
+	emu.Decode(opcode)
+	actual := emu.Pc
+	expected := uint16(2)
+	if actual != expected {
+		t.Errorf("got: 0x%x,but expected: 0x%x", actual, expected)
+	}
+}

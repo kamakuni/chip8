@@ -285,6 +285,8 @@ func (e *Emulator) Decode(opcode uint16) {
 		e.I = opcode & 0x0FFF
 		e.Pc += 2
 		break
+	case 0xB000:
+		e.Pc = opcode&0x0FFF + uint16(e.V[0])
 	default:
 		log.Fatalf("Unexpected opcode 0x%x", opcode)
 	}
