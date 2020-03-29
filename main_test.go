@@ -16,12 +16,12 @@ func TestEmulator_Fetch(t *testing.T) {
 	}
 }
 
-func TestEmulator_Decode0x0000(t *testing.T) {
+func TestEmulator_Decode0x00E0(t *testing.T) {
 	fonts := NewFonts()
 	emu := NewEmulator(fonts)
 	data := make([]byte, 2)
 	data[0] = 0x00
-	data[1] = 0x00
+	data[1] = 0xE0
 	emu.Load(data)
 	opcode := emu.Fetch()
 	emu.Decode(opcode)
@@ -32,14 +32,14 @@ func TestEmulator_Decode0x0000(t *testing.T) {
 	}
 }
 
-func TestEmulator_Decode0x000E(t *testing.T) {
+func TestEmulator_Decode0x00EE(t *testing.T) {
 	fonts := NewFonts()
 	emu := NewEmulator(fonts)
-	data := make([]byte, 2)
+	data := make([]byte, 4)
 	data[0] = 0x20
 	data[1] = 0xF0
 	data[2] = 0x00
-	data[3] = 0x0E
+	data[3] = 0xEE
 	emu.Load(data)
 	opcode := emu.Fetch()
 	emu.Decode(opcode)
@@ -321,6 +321,24 @@ func TestEmulator_Decode0x8XYE(t *testing.T) {
 	emu.Decode(opcode)
 	actual := int(emu.V[14])
 	expected := 0x02
+	if actual != expected {
+		t.Errorf("got: 0x%x,but expected: 0x%x", actual, expected)
+	}
+}
+
+func TestEmulator_Decode0x9XY0(t *testing.T) {
+	fonts := NewFonts()
+	emu := NewEmulator(fonts)
+	data := make([]byte, 2)
+	data[0] = 0x9E
+	data[1] = 0xD0
+	emu.Load(data)
+	emu.V[0xE] = 0x01
+	emu.V[0xD] = 0x02
+	expected := int(emu.Pc) + 4
+	opcode := emu.Fetch()
+	emu.Decode(opcode)
+	actual := int(emu.Pc)
 	if actual != expected {
 		t.Errorf("got: 0x%x,but expected: 0x%x", actual, expected)
 	}

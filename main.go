@@ -119,14 +119,14 @@ func (e *Emulator) Decode(opcode uint16) {
 	// https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
 	switch opcode & 0xF000 {
 	case 0x0000:
-		switch opcode & 0x000F {
-		case 0x0000:
+		switch opcode & 0x00FF {
+		case 0x00E0:
 			// CLS: Clear the screen
 			e.Gfx = [32][64]bool{}
 			e.ShouldDraw = true
 			e.Pc += 2
 			break
-		case 0x000E:
+		case 0x00EE:
 			e.Pc = e.Stack[e.Sp]
 			e.Sp--
 			break
@@ -252,6 +252,11 @@ func (e *Emulator) Decode(opcode uint16) {
 			// Set VF to 01 if a borrow does not occur
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
+			if e.V[y]-e.V[x] < 0 {
+				e.V[0xF] = 0x0
+			} else {
+				e.V[0xF] = 0x1
+			}
 			e.V[x] = e.V[y] - e.V[x]
 			e.Pc += 2
 			break
@@ -266,6 +271,14 @@ func (e *Emulator) Decode(opcode uint16) {
 			break
 		default:
 			log.Fatalf("Unexpected opcode 0x%x", opcode)
+		}
+	case 0x9000:
+		x := opcode & 0x0F00 >> 8
+		y := opcode & 0x00F0 >> 4
+		if e.V[x] != e.V[y] {
+			e.Pc += 4
+		} else {
+			e.Pc += 2
 		}
 	case 0xA000:
 		// LD: Sets I to the address NNN.
