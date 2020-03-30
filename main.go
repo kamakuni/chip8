@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
-	sdl "github.com/veandco/go-sdl2/sdl"
+	"github.com/veandco/go-sdl2/sdl"
 	"log"
 	"math/rand"
 	"os"
@@ -45,17 +45,17 @@ func NewFonts() [80]uint8 {
 }
 
 type Emulator struct {
-	Opcode     uint16       // two bytes opcodes
-	Memory     [4096]uint8  // 4K memory
-	V          [16]uint8    // 15 8-bit registers for general purpose and one for "carry-flag"
-	I          uint16       // index register
-	Pc         uint16       // program counter
-	Gfx        [32][64]bool // 2048 black or white pixels
-	delayTimer uint8        // Timer registor for general purpose
-	soundTimer uint8        // Timer registor for sound
-	Stack      [16]uint16   // to store current pc
-	Sp         uint16       // stack pointer
-	key        [16]uint8    // to store current stats of key
+	Opcode     uint16        // two bytes opcodes
+	Memory     [4096]uint8   // 4K memory
+	V          [16]uint8     // 15 8-bit registers for general purpose and one for "carry-flag"
+	I          uint16        // index register
+	Pc         uint16        // program counter
+	Gfx        [64][32]uint8 // 2048 black or white pixels
+	delayTimer uint8         // Timer registor for general purpose
+	soundTimer uint8         // Timer registor for sound
+	Stack      [16]uint16    // to store current pc
+	Sp         uint16        // stack pointer
+	key        [16]uint8     // to store current stats of key
 	ShouldDraw bool
 }
 
@@ -123,7 +123,7 @@ func (e *Emulator) Decode(opcode uint16) {
 		switch opcode & 0x00FF {
 		case 0x00E0:
 			// CLS: Clear the screen
-			e.Gfx = [32][64]bool{}
+			e.Gfx = [64][32]uint8{}
 			e.ShouldDraw = true
 			e.Pc += 2
 			break
@@ -292,6 +292,25 @@ func (e *Emulator) Decode(opcode uint16) {
 		x := opcode & 0x0F00 >> 8
 		mask := opcode & 0x00FF
 		e.V[x] = uint8(rand.Intn(256)) & uint8(mask)
+	case 0xD000:
+		x := e.V[opcode&0x0F00>>8]
+		y := e.V[opcode&0x00F0>>4]
+		height := opcode & 0x000F
+		var pixel uint8
+		e.V[0xF] = 0
+		for yi := 0; yi < int(height); height++ {
+			pixel = e.Memory[int(e.I)+yi]
+			for xi := 0; xi < 8; xi++ {
+				// 1000 0000 >> xi
+				if pixel&(0x80>>uint8(xi)) != 0 {
+					if e.Gfx[int(x)+xi][int(y)+yi] == 1 {
+						// when collision detected
+						e.V[0xF] = 1
+					}
+					e.Gfx[int(x)+xi][int(y)+yi] ^= pixel & (0x80 >> uint8(xi))
+				}
+			}
+		}
 	default:
 		log.Fatalf("Unexpected opcode 0x%x", opcode)
 	}
@@ -312,45 +331,35 @@ func (e *Emulator) Print() {
 	fmt.Printf("key:%v\n", e.key)
 }
 
-func main() {
+// https://github.com/veandco/go-sdl2-examples/blob/master/examples/keyboard-input/keyboard-input.go
+func run() (err error) {
+	var window *sdl.Window
 
-	fmt.Println("start")
-	if len(os.Args) != 2 {
-		// TODO:logging
-		panic(nil)
-	}
-	filepath := os.Args[1]
-	fonts := NewFonts()
-	emu := NewEmulator(fonts)
-	emu.load(filepath)
-	emu.Print()
-
-	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
-		// TODO:logging
-		panic(err)
+	if err = sdl.Init(sdl.INIT_EVERYTHING); err != nil {
+		return
 	}
 	defer sdl.Quit()
 
-	window, err := sdl.CreateWindow("CHIP-8 Emulator", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-		64, 32, sdl.WINDOW_SHOWN)
+	window, err = sdl.CreateWindow("Input", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 800, 600, sdl.WINDOW_SHOWN)
 	if err != nil {
-		// TODO:logging
-		panic(err)
+		return
 	}
 	defer window.Destroy()
 
-	fmt.Println("loop begin")
 	running := true
 	for running {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-			fmt.Println("poll event")
-			switch ty := event.(type) {
+			fmt.Println("event loop")
+			switch t := event.(type) {
+			case *sdl.QuitEvent:
+				running = false
 			case *sdl.KeyboardEvent:
-				fmt.Println("kenyboad event")
-				keyCode := ty.Keysym.Sym
+				fmt.Println("keyboard event")
+				keyCode := t.Keysym.Sym
 				keys := ""
+
 				// Modifier keys
-				switch ty.Keysym.Mod {
+				switch t.Keysym.Mod {
 				case sdl.KMOD_LALT:
 					keys += "Left Alt"
 				case sdl.KMOD_LCTRL:
@@ -374,15 +383,55 @@ func main() {
 				case sdl.KMOD_MODE:
 					keys += "AltGr Key"
 				}
-				fmt.Printf("Key down:%v", keyCode)
-			case *sdl.QuitEvent:
-				fmt.Println("Quit")
-				running = false
-				break
+
+				if keyCode < 10000 {
+					if keys != "" {
+						keys += " + "
+					}
+
+					// If the key is held down, this will fire
+					if t.Repeat > 0 {
+						keys += string(keyCode) + " repeating"
+					} else {
+						if t.State == sdl.RELEASED {
+							keys += string(keyCode) + " released"
+						} else if t.State == sdl.PRESSED {
+							keys += string(keyCode) + " pressed"
+						}
+					}
+
+				}
+
+				if keys != "" {
+					fmt.Println(keys)
+				}
 			}
 		}
+
+		sdl.Delay(16)
 	}
+
+	return
+}
+
+func main() {
+
+	fmt.Println("start")
+	if len(os.Args) != 2 {
+		// TODO:logging
+		panic(nil)
+	}
+	filepath := os.Args[1]
+	fonts := NewFonts()
+	emu := NewEmulator(fonts)
+	emu.load(filepath)
+	emu.Print()
+
 	//opcode := emu.Fetch()
 	//emu.Decode(opcode)
+
+	if err := run(); err != nil {
+		os.Exit(1)
+	}
 
 }
