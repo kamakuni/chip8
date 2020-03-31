@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"time"
 )
 
 // NewFonts creates fonts array
@@ -109,6 +110,14 @@ func (e *Emulator) load(filepath string) {
 		fmt.Printf("%x", e.Memory[int(e.Pc)+i])
 	}
 }
+
+/*func (e *Emulator) Draw() {
+	for i, row := range e.Gfx {
+		for j, _ := range row {
+			e.Gfx[i][j]
+		}
+	}
+}*/
 
 func (e *Emulator) Fetch() uint16 {
 	op1 := uint16(e.Memory[int(e.Pc)])
@@ -334,7 +343,7 @@ func (e *Emulator) Print() {
 }
 
 // https://github.com/veandco/go-sdl2-examples/blob/master/examples/keyboard-input/keyboard-input.go
-func run() (err error) {
+func (e *Emulator) run() (err error) {
 	var window *sdl.Window
 
 	if err = sdl.Init(sdl.INIT_EVERYTHING); err != nil {
@@ -342,14 +351,41 @@ func run() (err error) {
 	}
 	defer sdl.Quit()
 
-	window, err = sdl.CreateWindow("Input", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 800, 600, sdl.WINDOW_SHOWN)
+	window, err = sdl.CreateWindow("Input", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 640, 320, sdl.WINDOW_SHOWN)
 	if err != nil {
-		return
+		fmt.Fprint(os.Stderr, "Failed to create renderer: %s\n", err)
+		os.Exit(2)
 	}
 	defer window.Destroy()
 
+	window.Raise()
+
+	// window has been created, now need to get the window surface to draw on window
+	surface, err := window.GetSurface()
+	if err != nil {
+		fmt.Fprint(os.Stderr, "Failed to create surface: %s\n", err)
+		os.Exit(2)
+	}
+
 	running := true
 	for running {
+		for i, row := range e.Gfx {
+			for j := range row {
+				if j%2 == 0 {
+					e.Gfx[i][j] = 1
+				}
+			}
+		}
+		for i, row := range e.Gfx {
+			for j := range row {
+				if e.Gfx[i][j] == 1 {
+					rect := sdl.Rect{int32(i * 10), int32(j * 10), 10, 10}
+					surface.FillRect(&rect, sdl.MapRGB(surface.Format, 255, 255, 255))
+				}
+			}
+		}
+		window.UpdateSurface()
+		time.Sleep(time.Second * 5)
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			fmt.Println("event loop")
 			switch t := event.(type) {
@@ -432,7 +468,7 @@ func main() {
 	//opcode := emu.Fetch()
 	//emu.Decode(opcode)
 
-	if err := run(); err != nil {
+	if err := emu.run(); err != nil {
 		os.Exit(1)
 	}
 
