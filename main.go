@@ -308,6 +308,8 @@ func (e *Emulator) Decode(opcode uint16) {
 						e.V[0xF] = 1
 					}
 					e.Gfx[int(x)+xi][int(y)+yi] ^= pixel & (0x80 >> uint8(xi))
+					e.ShouldDraw = true
+					e.Pc += 2
 				}
 			}
 		}
