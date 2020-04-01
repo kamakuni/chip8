@@ -322,6 +322,19 @@ func (e *Emulator) Decode(opcode uint16) {
 				}
 			}
 		}
+	case 0xF000:
+		switch opcode & 0x00FF {
+		case 0x15:
+			x := e.V[opcode&0x0F00>>8]
+			e.delayTimer = e.V[x]
+			e.Pc += 2
+		case 0x18:
+			x := e.V[opcode&0x0F00>>8]
+			e.soundTimer = e.V[x]
+			e.Pc += 2
+		default:
+			log.Fatalf("Unexpected opcode 0x%x", opcode)
+		}
 	default:
 		log.Fatalf("Unexpected opcode 0x%x", opcode)
 	}
