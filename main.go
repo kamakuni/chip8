@@ -332,6 +332,10 @@ func (e *Emulator) Decode(opcode uint16) {
 		}
 	case 0xF000:
 		switch opcode & 0x00FF {
+		case 0x07:
+			x := e.V[opcode&0x0F00>>8]
+			e.V[x] = e.delayTimer
+			e.Jump()
 		case 0x15:
 			x := e.V[opcode&0x0F00>>8]
 			e.delayTimer = e.V[x]
