@@ -75,7 +75,7 @@ func NewEmulator(fonts [80]uint8) *Emulator {
 	}
 }
 
-func (e *Emulator) Jump() {
+func (e *Emulator) Next() {
 	e.Pc += 2
 }
 
@@ -142,7 +142,7 @@ func (e *Emulator) Decode(opcode uint16) {
 			// CLS: Clear the screen
 			e.Gfx = [64][32]uint8{}
 			e.ShouldDraw = true
-			e.Jump()
+			e.Next()
 			break
 		case 0x00EE:
 			e.Pc = e.Stack[e.Sp]
@@ -170,14 +170,14 @@ func (e *Emulator) Decode(opcode uint16) {
 		// (Usually the next instruction is a jump to skip a code block)
 		x := opcode & 0x0F00 >> 8
 		if int(e.V[x]) == int(opcode&0x00FF) {
-			e.Jump()
+			e.Next()
 		}
 	case 0x4000:
 		// Skips the next instruction if VX doesn't equal NN.
 		// (Usually the next instruction is a jump to skip a code block)
 		x := opcode & 0x0F00 >> 8
 		if int(e.V[x]) != int(opcode&0x00FF) {
-			e.Jump()
+			e.Next()
 		}
 	case 0x5000:
 		// Skips the next instruction if VX equals VY.
@@ -185,18 +185,18 @@ func (e *Emulator) Decode(opcode uint16) {
 		x := opcode & 0x0F00 >> 8
 		y := opcode & 0x00F0 >> 4
 		if e.V[x] == e.V[y] {
-			e.Jump()
+			e.Next()
 		}
 	case 0x6000:
 		// Sets VX to NN.
 		x := opcode & 0x0F00 >> 8
 		e.V[x] = uint8(opcode & 0x00FF)
-		e.Jump()
+		e.Next()
 	case 0x7000:
 		// 	Adds NN to VX. (Carry flag is not changed)
 		x := opcode & 0x0F00 >> 8
 		e.V[x] += uint8(opcode & 0x00FF)
-		e.Jump()
+		e.Next()
 	case 0x8000:
 		switch opcode & 0x000F {
 		case 0:
@@ -204,28 +204,28 @@ func (e *Emulator) Decode(opcode uint16) {
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[y]
-			e.Jump()
+			e.Next()
 			break
 		case 1:
 			// 	Sets VX to VX or VY. (Bitwise OR operation)
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] | e.V[y]
-			e.Jump()
+			e.Next()
 			break
 		case 2:
 			// Sets VX to VX and VY. (Bitwise AND operation)
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] & e.V[y]
-			e.Jump()
+			e.Next()
 			break
 		case 3:
 			// Sets VX to VX xor VY.
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] ^ e.V[y]
-			e.Jump()
+			e.Next()
 			break
 		case 4:
 			// Add the value of register VY to register VX
@@ -239,7 +239,7 @@ func (e *Emulator) Decode(opcode uint16) {
 				e.V[0xF] = 0x0
 			}
 			e.V[x] += e.V[y]
-			e.Jump()
+			e.Next()
 			break
 		case 5:
 			// Subtract the value of register VY from register VX
@@ -253,7 +253,7 @@ func (e *Emulator) Decode(opcode uint16) {
 				e.V[0xF] = 0x1
 			}
 			e.V[x] -= e.V[y]
-			e.Jump()
+			e.Next()
 			break
 		case 6:
 			// Store the value of register VY shifted right one bit in register VX¹
@@ -262,7 +262,7 @@ func (e *Emulator) Decode(opcode uint16) {
 			x := opcode & 0x0F00 >> 8
 			e.V[0xF] = uint8(opcode & 0x0001)
 			e.V[x] >>= 1
-			e.Jump()
+			e.Next()
 			break
 		case 7:
 			// Set register VX to the value of VY minus VX
@@ -276,7 +276,7 @@ func (e *Emulator) Decode(opcode uint16) {
 				e.V[0xF] = 0x1
 			}
 			e.V[x] = e.V[y] - e.V[x]
-			e.Jump()
+			e.Next()
 			break
 		case 0xE:
 			// Store the value of register VY shifted left one bit in register VX¹
@@ -285,7 +285,7 @@ func (e *Emulator) Decode(opcode uint16) {
 			x := opcode & 0x0F00 >> 8
 			e.V[0xF] = uint8(opcode & 0x0001)
 			e.V[x] <<= 1
-			e.Jump()
+			e.Next()
 			break
 		default:
 			log.Fatalf("Unexpected opcode 0x%x", opcode)
@@ -296,12 +296,12 @@ func (e *Emulator) Decode(opcode uint16) {
 		if e.V[x] != e.V[y] {
 			e.Skip()
 		} else {
-			e.Jump()
+			e.Next()
 		}
 	case 0xA000:
 		// LD: Sets I to the address NNN.
 		e.I = opcode & 0x0FFF
-		e.Jump()
+		e.Next()
 		break
 	case 0xB000:
 		e.Pc = opcode&0x0FFF + uint16(e.V[0])
@@ -326,7 +326,7 @@ func (e *Emulator) Decode(opcode uint16) {
 					}
 					e.Gfx[int(x)+xi][int(y)+yi] ^= pixel & (0x80 >> uint8(xi))
 					e.ShouldDraw = true
-					e.Jump()
+					e.Next()
 				}
 			}
 		}
@@ -335,19 +335,19 @@ func (e *Emulator) Decode(opcode uint16) {
 		case 0x07:
 			x := opcode & 0x0F00 >> 8
 			e.V[x] = e.delayTimer
-			e.Jump()
+			e.Next()
 		case 0x15:
 			x := opcode & 0x0F00 >> 8
 			e.delayTimer = e.V[x]
-			e.Jump()
+			e.Next()
 		case 0x18:
 			x := opcode & 0x0F00 >> 8
 			e.soundTimer = e.V[x]
-			e.Jump()
+			e.Next()
 		case 0x1E:
 			x := opcode & 0x0F00 >> 8
 			e.I += uint16(e.V[x])
-			e.Jump()
+			e.Next()
 		default:
 			log.Fatalf("Unexpected opcode 0x%x", opcode)
 		}
