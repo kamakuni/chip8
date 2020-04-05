@@ -45,6 +45,27 @@ func NewFonts() [80]uint8 {
 	}
 }
 
+func NewKeyMap() map[rune]rune {
+	return map[rune]rune{
+		'1': '1',
+		'2': '2',
+		'3': '3',
+		'4': 'c',
+		'q': '4',
+		'w': '5',
+		'e': '6',
+		'r': 'd',
+		'a': '7',
+		's': '8',
+		'd': '9',
+		'f': 'e',
+		'z': 'a',
+		'x': '0',
+		'c': 'b',
+		'v': 'f',
+	}
+}
+
 type Emulator struct {
 	Opcode     uint16        // two bytes opcodes
 	Memory     [4096]uint8   // 4K memory
@@ -58,6 +79,7 @@ type Emulator struct {
 	Sp         uint16        // stack pointer
 	key        [16]uint8     // to store current stats of key
 	ShouldDraw bool
+	keyMap     map[rune]rune
 }
 
 // NewEmulator creates Emulator
@@ -66,20 +88,22 @@ func NewEmulator(fonts [80]uint8) *Emulator {
 	for i, font := range fonts {
 		memory[i] = font
 	}
+	keyMap := NewKeyMap()
 	return &Emulator{
 		Pc:     0x200,
 		Opcode: 0,
 		Memory: memory,
 		I:      0,
 		Sp:     0,
+		keyMap: keyMap,
 	}
 }
 
-func (e *Emulator) Next() {
+func (e *Emulator) next() {
 	e.Pc += 2
 }
 
-func (e *Emulator) Skip() {
+func (e *Emulator) skip() {
 	e.Pc += 4
 }
 
@@ -142,7 +166,7 @@ func (e *Emulator) Decode(opcode uint16) {
 			// CLS: Clear the screen
 			e.Gfx = [64][32]uint8{}
 			e.ShouldDraw = true
-			e.Next()
+			e.next()
 			break
 		case 0x00EE:
 			e.Pc = e.Stack[e.Sp]
@@ -166,37 +190,37 @@ func (e *Emulator) Decode(opcode uint16) {
 		e.Pc = opcode & 0x0FFF
 		break
 	case 0x3000:
-		// Skips the next instruction if VX equals NN.
+		// skips the next instruction if VX equals NN.
 		// (Usually the next instruction is a jump to skip a code block)
 		x := opcode & 0x0F00 >> 8
 		if int(e.V[x]) == int(opcode&0x00FF) {
-			e.Next()
+			e.next()
 		}
 	case 0x4000:
-		// Skips the next instruction if VX doesn't equal NN.
+		// skips the next instruction if VX doesn't equal NN.
 		// (Usually the next instruction is a jump to skip a code block)
 		x := opcode & 0x0F00 >> 8
 		if int(e.V[x]) != int(opcode&0x00FF) {
-			e.Next()
+			e.next()
 		}
 	case 0x5000:
-		// Skips the next instruction if VX equals VY.
+		// skips the next instruction if VX equals VY.
 		// (Usually the next instruction is a jump to skip a code block)
 		x := opcode & 0x0F00 >> 8
 		y := opcode & 0x00F0 >> 4
 		if e.V[x] == e.V[y] {
-			e.Next()
+			e.next()
 		}
 	case 0x6000:
 		// Sets VX to NN.
 		x := opcode & 0x0F00 >> 8
 		e.V[x] = uint8(opcode & 0x00FF)
-		e.Next()
+		e.next()
 	case 0x7000:
 		// 	Adds NN to VX. (Carry flag is not changed)
 		x := opcode & 0x0F00 >> 8
 		e.V[x] += uint8(opcode & 0x00FF)
-		e.Next()
+		e.next()
 	case 0x8000:
 		switch opcode & 0x000F {
 		case 0:
@@ -204,28 +228,28 @@ func (e *Emulator) Decode(opcode uint16) {
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[y]
-			e.Next()
+			e.next()
 			break
 		case 1:
 			// 	Sets VX to VX or VY. (Bitwise OR operation)
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] | e.V[y]
-			e.Next()
+			e.next()
 			break
 		case 2:
 			// Sets VX to VX and VY. (Bitwise AND operation)
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] & e.V[y]
-			e.Next()
+			e.next()
 			break
 		case 3:
 			// Sets VX to VX xor VY.
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] ^ e.V[y]
-			e.Next()
+			e.next()
 			break
 		case 4:
 			// Add the value of register VY to register VX
@@ -239,7 +263,7 @@ func (e *Emulator) Decode(opcode uint16) {
 				e.V[0xF] = 0x0
 			}
 			e.V[x] += e.V[y]
-			e.Next()
+			e.next()
 			break
 		case 5:
 			// Subtract the value of register VY from register VX
@@ -253,7 +277,7 @@ func (e *Emulator) Decode(opcode uint16) {
 				e.V[0xF] = 0x1
 			}
 			e.V[x] -= e.V[y]
-			e.Next()
+			e.next()
 			break
 		case 6:
 			// Store the value of register VY shifted right one bit in register VX¹
@@ -262,7 +286,7 @@ func (e *Emulator) Decode(opcode uint16) {
 			x := opcode & 0x0F00 >> 8
 			e.V[0xF] = uint8(opcode & 0x0001)
 			e.V[x] >>= 1
-			e.Next()
+			e.next()
 			break
 		case 7:
 			// Set register VX to the value of VY minus VX
@@ -276,7 +300,7 @@ func (e *Emulator) Decode(opcode uint16) {
 				e.V[0xF] = 0x1
 			}
 			e.V[x] = e.V[y] - e.V[x]
-			e.Next()
+			e.next()
 			break
 		case 0xE:
 			// Store the value of register VY shifted left one bit in register VX¹
@@ -285,7 +309,7 @@ func (e *Emulator) Decode(opcode uint16) {
 			x := opcode & 0x0F00 >> 8
 			e.V[0xF] = uint8(opcode & 0x0001)
 			e.V[x] <<= 1
-			e.Next()
+			e.next()
 			break
 		default:
 			log.Fatalf("Unexpected opcode 0x%x", opcode)
@@ -294,14 +318,14 @@ func (e *Emulator) Decode(opcode uint16) {
 		x := opcode & 0x0F00 >> 8
 		y := opcode & 0x00F0 >> 4
 		if e.V[x] != e.V[y] {
-			e.Skip()
+			e.skip()
 		} else {
-			e.Next()
+			e.next()
 		}
 	case 0xA000:
 		// LD: Sets I to the address NNN.
 		e.I = opcode & 0x0FFF
-		e.Next()
+		e.next()
 		break
 	case 0xB000:
 		e.Pc = opcode&0x0FFF + uint16(e.V[0])
@@ -326,8 +350,23 @@ func (e *Emulator) Decode(opcode uint16) {
 					}
 					e.Gfx[int(x)+xi][int(y)+yi] ^= pixel & (0x80 >> uint8(xi))
 					e.ShouldDraw = true
-					e.Next()
+					e.next()
 				}
+			}
+		}
+	case 0xE000:
+		switch opcode & 0x00FF {
+		case 0x9E:
+			x := opcode & 0x0F00 >> 8
+			key := rune(e.V[x])
+			if e.pressed(key) {
+				e.skip()
+			}
+		case 0xA1:
+			x := opcode & 0x0F00 >> 8
+			key := rune(e.V[x])
+			if !e.pressed(key) {
+				e.skip()
 			}
 		}
 	case 0xF000:
@@ -335,19 +374,19 @@ func (e *Emulator) Decode(opcode uint16) {
 		case 0x07:
 			x := opcode & 0x0F00 >> 8
 			e.V[x] = e.delayTimer
-			e.Next()
+			e.next()
 		case 0x15:
 			x := opcode & 0x0F00 >> 8
 			e.delayTimer = e.V[x]
-			e.Next()
+			e.next()
 		case 0x18:
 			x := opcode & 0x0F00 >> 8
 			e.soundTimer = e.V[x]
-			e.Next()
+			e.next()
 		case 0x1E:
 			x := opcode & 0x0F00 >> 8
 			e.I += uint16(e.V[x])
-			e.Next()
+			e.next()
 		default:
 			log.Fatalf("Unexpected opcode 0x%x", opcode)
 		}
@@ -369,6 +408,11 @@ func (e *Emulator) Print() {
 	fmt.Printf("stack:%v\n", e.Stack)
 	fmt.Printf("sp:%v\n", e.Sp)
 	fmt.Printf("key:%v\n", e.key)
+}
+
+func (e *Emulator) pressed(key rune) bool {
+	_, ok := e.keyMap[key]
+	return ok
 }
 
 // https://github.com/veandco/go-sdl2-examples/blob/master/examples/keyboard-input/keyboard-input.go
@@ -398,13 +442,16 @@ func (e *Emulator) run() (err error) {
 
 	running := true
 	for running {
-		for i, row := range e.Gfx {
+
+		/*for i, row := range e.Gfx {
 			for j := range row {
 				if j%2 == 0 {
 					e.Gfx[i][j] = 1
 				}
 			}
-		}
+		}*/
+		opcode := e.Fetch()
+		e.Decode(opcode)
 		for i, row := range e.Gfx {
 			for j := range row {
 				if e.Gfx[i][j] == 1 {
@@ -415,7 +462,7 @@ func (e *Emulator) run() (err error) {
 		}
 		window.UpdateSurface()
 		time.Sleep(time.Second * 5)
-		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+		/*for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			fmt.Println("event loop")
 			switch t := event.(type) {
 			case *sdl.QuitEvent:
@@ -473,7 +520,7 @@ func (e *Emulator) run() (err error) {
 					fmt.Println(keys)
 				}
 			}
-		}
+		}*/
 
 		sdl.Delay(16)
 	}
