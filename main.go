@@ -78,8 +78,10 @@ type Emulator struct {
 	Stack      [16]uint16    // to store current pc
 	Sp         uint16        // stack pointer
 	key        [16]uint8     // to store current stats of key
-	ShouldDraw bool
+	shouldDraw bool
+	surface    *sdl.Surface
 	keyMap     map[rune]rune
+	window     *sdl.Window
 }
 
 // NewEmulator creates Emulator
@@ -99,6 +101,48 @@ func NewEmulator(fonts [80]uint8) *Emulator {
 	}
 }
 
+func (e *Emulator) InitDisplay() {
+	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
+		return
+	}
+	//defer sdl.Quit()
+
+	window, err := sdl.CreateWindow("Input", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 640, 320, sdl.WINDOW_SHOWN)
+	if err != nil {
+		fmt.Fprint(os.Stderr, "Failed to create renderer: %s\n", err)
+		os.Exit(2)
+	}
+	//defer window.Destroy()
+
+	window.Raise()
+	e.window = window
+
+	// window has been created, now need to get the window surface to draw on window
+	surface, err := window.GetSurface()
+	if err != nil {
+		fmt.Fprint(os.Stderr, "Failed to create surface: %s\n", err)
+		os.Exit(2)
+	}
+	e.surface = surface
+}
+
+func (e *Emulator) DestroyDisplay() {
+	sdl.Quit()
+	e.window.Destroy()
+}
+
+func (e *Emulator) draw() {
+	for i, row := range e.Gfx {
+		for j := range row {
+			if e.Gfx[i][j] == 1 {
+				rect := sdl.Rect{int32(i * 10), int32(j * 10), 10, 10}
+				e.surface.FillRect(&rect, sdl.MapRGB(e.surface.Format, 255, 255, 255))
+			}
+		}
+	}
+	e.window.UpdateSurface()
+}
+
 func (e *Emulator) next() {
 	e.Pc += 2
 }
@@ -108,14 +152,14 @@ func (e *Emulator) skip() {
 }
 
 // Load loads data to memory
-func (e *Emulator) Load(data []byte) {
+/*func (e *Emulator) Load(data []byte) {
 	for i, b := range data {
 		e.Memory[int(e.Pc)+i] = b
 		fmt.Printf("load byte:0x%x", e.Memory[int(e.Pc)+i])
 	}
-}
+}*/
 
-func (e *Emulator) load(filepath string) {
+func (e *Emulator) Load(filepath string) {
 	file, err := os.Open(filepath)
 	if err != nil {
 		// TODO:logging
@@ -157,7 +201,7 @@ func (e *Emulator) Fetch() uint16 {
 	return op1<<8 | op2
 }
 
-func (e *Emulator) Decode(opcode uint16) {
+func (e *Emulator) Exec(opcode uint16) {
 	// https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
 	switch opcode & 0xF000 {
 	case 0x0000:
@@ -165,7 +209,7 @@ func (e *Emulator) Decode(opcode uint16) {
 		case 0x00E0:
 			// CLS: Clear the screen
 			e.Gfx = [64][32]uint8{}
-			e.ShouldDraw = true
+			e.shouldDraw = true
 			e.next()
 			break
 		case 0x00EE:
@@ -334,8 +378,8 @@ func (e *Emulator) Decode(opcode uint16) {
 		mask := opcode & 0x00FF
 		e.V[x] = uint8(rand.Intn(256)) & uint8(mask)
 	case 0xD000:
-		x := e.V[opcode&0x0F00>>8]
-		y := e.V[opcode&0x00F0>>4]
+		vx := e.V[opcode&0x0F00>>8]
+		vy := e.V[opcode&0x00F0>>4]
 		height := opcode & 0x000F
 		var pixel uint8
 		e.V[0xF] = 0
@@ -344,12 +388,12 @@ func (e *Emulator) Decode(opcode uint16) {
 			for xi := 0; xi < 8; xi++ {
 				// 1000 0000 >> xi
 				if pixel&(0x80>>uint8(xi)) != 0 {
-					if e.Gfx[int(x)+xi][int(y)+yi] == 1 {
+					if e.Gfx[int(vx)+xi][int(vy)+yi] == 1 {
 						// when collision detected
 						e.V[0xF] = 1
 					}
-					e.Gfx[int(x)+xi][int(y)+yi] ^= pixel & (0x80 >> uint8(xi))
-					e.ShouldDraw = true
+					e.Gfx[int(vx)+xi][int(vy)+yi] ^= pixel & (0x80 >> uint8(xi))
+					e.shouldDraw = true
 					e.next()
 				}
 			}
@@ -361,12 +405,16 @@ func (e *Emulator) Decode(opcode uint16) {
 			key := rune(e.V[x])
 			if e.pressed(key) {
 				e.skip()
+			} else {
+				e.next()
 			}
 		case 0xA1:
 			x := opcode & 0x0F00 >> 8
 			key := rune(e.V[x])
 			if !e.pressed(key) {
 				e.skip()
+			} else {
+				e.next()
 			}
 		}
 	case 0xF000:
@@ -386,6 +434,28 @@ func (e *Emulator) Decode(opcode uint16) {
 		case 0x1E:
 			x := opcode & 0x0F00 >> 8
 			e.I += uint16(e.V[x])
+			e.next()
+		case 0x29:
+			vx := e.V[opcode&0x0F00>>8]
+			e.I = uint16(vx) * 5
+			e.next()
+		case 0x33:
+			x := opcode & 0x0F00 >> 8
+			e.Memory[e.I] = e.V[x] / 100
+			e.Memory[e.I+1] = (e.V[x] / 10) % 10
+			e.Memory[e.I+2] = (e.V[x] % 100) % 10
+			e.next()
+		case 0x55:
+			x := opcode & 0x0F00 >> 8
+			for n := 0; n <= int(x)+1; n++ {
+				e.Memory[int(e.I)+n] = e.V[x]
+			}
+			e.next()
+		case 0x65:
+			x := opcode & 0x0F00 >> 8
+			for n := 0; n <= int(x)+1; n++ {
+				e.V[x] = e.Memory[int(e.I)+n]
+			}
 			e.next()
 		default:
 			log.Fatalf("Unexpected opcode 0x%x", opcode)
@@ -416,29 +486,7 @@ func (e *Emulator) pressed(key rune) bool {
 }
 
 // https://github.com/veandco/go-sdl2-examples/blob/master/examples/keyboard-input/keyboard-input.go
-func (e *Emulator) run() (err error) {
-	var window *sdl.Window
-
-	if err = sdl.Init(sdl.INIT_EVERYTHING); err != nil {
-		return
-	}
-	defer sdl.Quit()
-
-	window, err = sdl.CreateWindow("Input", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 640, 320, sdl.WINDOW_SHOWN)
-	if err != nil {
-		fmt.Fprint(os.Stderr, "Failed to create renderer: %s\n", err)
-		os.Exit(2)
-	}
-	defer window.Destroy()
-
-	window.Raise()
-
-	// window has been created, now need to get the window surface to draw on window
-	surface, err := window.GetSurface()
-	if err != nil {
-		fmt.Fprint(os.Stderr, "Failed to create surface: %s\n", err)
-		os.Exit(2)
-	}
+func (e *Emulator) Run() (err error) {
 
 	running := true
 	for running {
@@ -451,16 +499,13 @@ func (e *Emulator) run() (err error) {
 			}
 		}*/
 		opcode := e.Fetch()
-		e.Decode(opcode)
-		for i, row := range e.Gfx {
-			for j := range row {
-				if e.Gfx[i][j] == 1 {
-					rect := sdl.Rect{int32(i * 10), int32(j * 10), 10, 10}
-					surface.FillRect(&rect, sdl.MapRGB(surface.Format, 255, 255, 255))
-				}
-			}
+		e.Exec(opcode)
+		if e.delayTimer > 0 {
+			e.delayTimer--
 		}
-		window.UpdateSurface()
+		if e.shouldDraw {
+			e.draw()
+		}
 		time.Sleep(time.Second * 5)
 		/*for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			fmt.Println("event loop")
@@ -538,13 +583,15 @@ func main() {
 	filepath := os.Args[1]
 	fonts := NewFonts()
 	emu := NewEmulator(fonts)
-	emu.load(filepath)
+	emu.InitDisplay()
+	defer emu.DestroyDisplay()
+	emu.Load(filepath)
 	emu.Print()
 
 	//opcode := emu.Fetch()
 	//emu.Decode(opcode)
 
-	if err := emu.run(); err != nil {
+	if err := emu.Run(); err != nil {
 		os.Exit(1)
 	}
 
