@@ -7,7 +7,6 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"time"
 )
 
 // NewFonts creates fonts array
@@ -45,24 +44,24 @@ func NewFonts() [80]uint8 {
 	}
 }
 
-func NewKeyMap() map[rune]rune {
-	return map[rune]rune{
-		'1': '1',
-		'2': '2',
-		'3': '3',
-		'4': 'c',
-		'q': '4',
-		'w': '5',
-		'e': '6',
-		'r': 'd',
-		'a': '7',
-		's': '8',
-		'd': '9',
-		'f': 'e',
-		'z': 'a',
-		'x': '0',
-		'c': 'b',
-		'v': 'f',
+func NewKeyMap() map[string]byte {
+	return map[string]byte{
+		"1": 0x1,
+		"2": 0x2,
+		"3": 0x3,
+		"4": 0xc,
+		"Q": 0x4,
+		"W": 0x5,
+		"E": 0x6,
+		"R": 0xD,
+		"A": 0x7,
+		"S": 0x8,
+		"D": 0x9,
+		"F": 0xE,
+		"Z": 0xA,
+		"X": 0x0,
+		"C": 0xB,
+		"V": 0xF,
 	}
 }
 
@@ -80,7 +79,7 @@ type Emulator struct {
 	key        [16]uint8     // to store current stats of key
 	shouldDraw bool
 	surface    *sdl.Surface
-	keyMap     map[rune]rune
+	keyMap     map[string]byte
 	window     *sdl.Window
 }
 
@@ -211,19 +210,15 @@ func (e *Emulator) Exec(opcode uint16) {
 			e.Gfx = [64][32]uint8{}
 			e.shouldDraw = true
 			e.next()
-			break
 		case 0x00EE:
 			e.Pc = e.Stack[e.Sp]
 			e.Sp--
-			break
 		default:
 			log.Fatalf("Unexpected opcode 0x%x", opcode)
 		}
-		break
 	case 0x1000:
 		// Goto NNN: Jump to address NNN
 		e.Pc = opcode & 0x0FFF
-		break
 	case 0x2000:
 		// CALL: Call the subroutine at address NNN
 		// Because we will need to temporary jump to address NNN,
@@ -232,7 +227,6 @@ func (e *Emulator) Exec(opcode uint16) {
 		e.Stack[e.Sp] = e.Pc
 		e.Sp++
 		e.Pc = opcode & 0x0FFF
-		break
 	case 0x3000:
 		// skips the next instruction if VX equals NN.
 		// (Usually the next instruction is a jump to skip a code block)
@@ -273,28 +267,24 @@ func (e *Emulator) Exec(opcode uint16) {
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[y]
 			e.next()
-			break
 		case 1:
 			// 	Sets VX to VX or VY. (Bitwise OR operation)
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] | e.V[y]
 			e.next()
-			break
 		case 2:
 			// Sets VX to VX and VY. (Bitwise AND operation)
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] & e.V[y]
 			e.next()
-			break
 		case 3:
 			// Sets VX to VX xor VY.
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] ^ e.V[y]
 			e.next()
-			break
 		case 4:
 			// Add the value of register VY to register VX
 			// Set VF to 01 if a carry occurs
@@ -308,7 +298,6 @@ func (e *Emulator) Exec(opcode uint16) {
 			}
 			e.V[x] += e.V[y]
 			e.next()
-			break
 		case 5:
 			// Subtract the value of register VY from register VX
 			// Set VF to 00 if a borrow occurs
@@ -322,7 +311,6 @@ func (e *Emulator) Exec(opcode uint16) {
 			}
 			e.V[x] -= e.V[y]
 			e.next()
-			break
 		case 6:
 			// Store the value of register VY shifted right one bit in register VX¹
 			// Set register VF to the least significant bit prior to the shift
@@ -331,7 +319,6 @@ func (e *Emulator) Exec(opcode uint16) {
 			e.V[0xF] = uint8(opcode & 0x0001)
 			e.V[x] >>= 1
 			e.next()
-			break
 		case 7:
 			// Set register VX to the value of VY minus VX
 			// Set VF to 00 if a borrow occurs
@@ -345,7 +332,6 @@ func (e *Emulator) Exec(opcode uint16) {
 			}
 			e.V[x] = e.V[y] - e.V[x]
 			e.next()
-			break
 		case 0xE:
 			// Store the value of register VY shifted left one bit in register VX¹
 			// Set register VF to the most significant bit prior to the shift
@@ -354,7 +340,6 @@ func (e *Emulator) Exec(opcode uint16) {
 			e.V[0xF] = uint8(opcode & 0x0001)
 			e.V[x] <<= 1
 			e.next()
-			break
 		default:
 			log.Fatalf("Unexpected opcode 0x%x", opcode)
 		}
@@ -370,7 +355,6 @@ func (e *Emulator) Exec(opcode uint16) {
 		// LD: Sets I to the address NNN.
 		e.I = opcode & 0x0FFF
 		e.next()
-		break
 	case 0xB000:
 		e.Pc = opcode&0x0FFF + uint16(e.V[0])
 	case 0xC000:
@@ -423,6 +407,8 @@ func (e *Emulator) Exec(opcode uint16) {
 			x := opcode & 0x0F00 >> 8
 			e.V[x] = e.delayTimer
 			e.next()
+		case 0x0A:
+			//pass
 		case 0x15:
 			x := opcode & 0x0F00 >> 8
 			e.delayTimer = e.V[x]
@@ -436,6 +422,8 @@ func (e *Emulator) Exec(opcode uint16) {
 			e.I += uint16(e.V[x])
 			e.next()
 		case 0x29:
+			// 0xFX29 Sets I to the location of the sprite for the character in VX.
+			// Characters 0-F (in hexadecimal) are represented by a 4x5 font
 			vx := e.V[opcode&0x0F00>>8]
 			e.I = uint16(vx) * 5
 			e.next()
@@ -506,68 +494,20 @@ func (e *Emulator) Run() (err error) {
 		if e.shouldDraw {
 			e.draw()
 		}
-		time.Sleep(time.Second * 5)
-		/*for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+		for ev := sdl.PollEvent(); ev != nil; ev = sdl.PollEvent() {
 			fmt.Println("event loop")
-			switch t := event.(type) {
+			switch et := ev.(type) {
 			case *sdl.QuitEvent:
-				running = false
+				os.Exit(0)
 			case *sdl.KeyboardEvent:
-				fmt.Println("keyboard event")
-				keyCode := t.Keysym.Sym
-				keys := ""
-
-				// Modifier keys
-				switch t.Keysym.Mod {
-				case sdl.KMOD_LALT:
-					keys += "Left Alt"
-				case sdl.KMOD_LCTRL:
-					keys += "Left Control"
-				case sdl.KMOD_LSHIFT:
-					keys += "Left Shift"
-				case sdl.KMOD_LGUI:
-					keys += "Left Meta or Windows key"
-				case sdl.KMOD_RALT:
-					keys += "Right Alt"
-				case sdl.KMOD_RCTRL:
-					keys += "Right Control"
-				case sdl.KMOD_RSHIFT:
-					keys += "Right Shift"
-				case sdl.KMOD_RGUI:
-					keys += "Right Meta or Windows key"
-				case sdl.KMOD_NUM:
-					keys += "Num Lock"
-				case sdl.KMOD_CAPS:
-					keys += "Caps Lock"
-				case sdl.KMOD_MODE:
-					keys += "AltGr Key"
-				}
-
-				if keyCode < 10000 {
-					if keys != "" {
-						keys += " + "
-					}
-
-					// If the key is held down, this will fire
-					if t.Repeat > 0 {
-						keys += string(keyCode) + " repeating"
-					} else {
-						if t.State == sdl.RELEASED {
-							keys += string(keyCode) + " released"
-						} else if t.State == sdl.PRESSED {
-							keys += string(keyCode) + " pressed"
-						}
-					}
-
-				}
-
-				if keys != "" {
-					fmt.Println(keys)
+				if et.Type == sdl.KEYUP {
+					e.key[e.keyMap[string(et.Keysym.Scancode)]] = 0
+				} else if et.Type == sdl.KEYDOWN {
+					e.key[e.keyMap[string(et.Keysym.Scancode)]] = 1
 				}
 			}
-		}*/
+		}
 
-		sdl.Delay(16)
 	}
 
 	return
