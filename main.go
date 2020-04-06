@@ -44,24 +44,24 @@ func NewFonts() [80]uint8 {
 	}
 }
 
-func NewKeyMap() map[string]byte {
-	return map[string]byte{
-		"1": 0x1,
-		"2": 0x2,
-		"3": 0x3,
-		"4": 0xc,
-		"Q": 0x4,
-		"W": 0x5,
-		"E": 0x6,
-		"R": 0xD,
-		"A": 0x7,
-		"S": 0x8,
-		"D": 0x9,
-		"F": 0xE,
-		"Z": 0xA,
-		"X": 0x0,
-		"C": 0xB,
-		"V": 0xF,
+func NewKeyMap() map[rune]byte {
+	return map[rune]byte{
+		'1': 0x1,
+		'2': 0x2,
+		'3': 0x3,
+		'4': 0xc,
+		'Q': 0x4,
+		'W': 0x5,
+		'E': 0x6,
+		'R': 0xD,
+		'A': 0x7,
+		'S': 0x8,
+		'D': 0x9,
+		'F': 0xE,
+		'Z': 0xA,
+		'X': 0x0,
+		'C': 0xB,
+		'V': 0xF,
 	}
 }
 
@@ -79,7 +79,7 @@ type Emulator struct {
 	key        [16]uint8     // to store current stats of key
 	shouldDraw bool
 	surface    *sdl.Surface
-	keyMap     map[string]byte
+	keyMap     map[rune]byte
 	window     *sdl.Window
 }
 
@@ -501,9 +501,9 @@ func (e *Emulator) Run() (err error) {
 				os.Exit(0)
 			case *sdl.KeyboardEvent:
 				if et.Type == sdl.KEYUP {
-					e.key[e.keyMap[string(et.Keysym.Scancode)]] = 0
+					e.key[e.keyMap[rune(et.Keysym.Scancode)]] = 0
 				} else if et.Type == sdl.KEYDOWN {
-					e.key[e.keyMap[string(et.Keysym.Scancode)]] = 1
+					e.key[e.keyMap[rune(et.Keysym.Scancode)]] = 1
 				}
 			}
 		}
