@@ -376,12 +376,12 @@ func (e *Emulator) Exec(opcode uint16) {
 						// when collision detected
 						e.V[0xF] = 1
 					}
-					e.Gfx[int(vx)+xi][int(vy)+yi] ^= pixel & (0x80 >> uint8(xi))
-					e.shouldDraw = true
-					e.next()
+					e.Gfx[int(vx)+xi][int(vy)+yi] ^= 1
 				}
 			}
 		}
+		e.shouldDraw = true
+		e.next()
 	case 0xE000:
 		switch opcode & 0x00FF {
 		case 0x9E:
