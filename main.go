@@ -213,6 +213,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		case 0x00EE:
 			e.Pc = e.Stack[e.Sp]
 			e.Sp--
+			e.next()
 		default:
 			log.Fatalf("Unexpected opcode 0x%x", opcode)
 		}
