@@ -382,6 +382,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		x := opcode & 0x0F00 >> 8
 		mask := opcode & 0x00FF
 		e.V[x] = uint8(rand.Intn(256)) & uint8(mask)
+		e.next()
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0xD000:
 		vx := e.V[opcode&0x0F00>>8]
@@ -535,8 +536,10 @@ func (e *Emulator) Run() (err error) {
 				os.Exit(0)
 			case *sdl.KeyboardEvent:
 				if et.Type == sdl.KEYUP {
+					fmt.Printf("keyup: %v", rune(et.Keysym.Scancode))
 					e.key[e.keyMap[rune(et.Keysym.Scancode)]] = 0
 				} else if et.Type == sdl.KEYDOWN {
+					fmt.Printf("keydown: %v", rune(et.Keysym.Scancode))
 					e.key[e.keyMap[rune(et.Keysym.Scancode)]] = 1
 				}
 			}
