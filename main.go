@@ -210,16 +210,18 @@ func (e *Emulator) Exec(opcode uint16) {
 			e.Gfx = [64][32]uint8{}
 			e.shouldDraw = true
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x00EE:
 			e.Pc = e.Stack[e.Sp]
 			e.Sp--
 			e.next()
 		default:
-			log.Fatalf("Unexpected opcode 0x%x", opcode)
+			log.Fatalf("Unexpected opcode 0x%x\n", opcode)
 		}
 	case 0x1000:
 		// Goto NNN: Jump to address NNN
 		e.Pc = opcode & 0x0FFF
+		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0x2000:
 		// CALL: Call the subroutine at address NNN
 		// Because we will need to temporary jump to address NNN,
@@ -228,6 +230,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		e.Stack[e.Sp] = e.Pc
 		e.Sp++
 		e.Pc = opcode & 0x0FFF
+		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0x3000:
 		// skips the next instruction if VX equals NN.
 		// (Usually the next instruction is a jump to skip a code block)
@@ -235,6 +238,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		if int(e.V[x]) == int(opcode&0x00FF) {
 			e.next()
 		}
+		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0x4000:
 		// skips the next instruction if VX doesn't equal NN.
 		// (Usually the next instruction is a jump to skip a code block)
@@ -242,6 +246,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		if int(e.V[x]) != int(opcode&0x00FF) {
 			e.next()
 		}
+		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0x5000:
 		// skips the next instruction if VX equals VY.
 		// (Usually the next instruction is a jump to skip a code block)
@@ -250,16 +255,19 @@ func (e *Emulator) Exec(opcode uint16) {
 		if e.V[x] == e.V[y] {
 			e.next()
 		}
+		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0x6000:
 		// Sets VX to NN.
 		x := opcode & 0x0F00 >> 8
 		e.V[x] = uint8(opcode & 0x00FF)
 		e.next()
+		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0x7000:
 		// 	Adds NN to VX. (Carry flag is not changed)
 		x := opcode & 0x0F00 >> 8
 		e.V[x] += uint8(opcode & 0x00FF)
 		e.next()
+		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0x8000:
 		switch opcode & 0x000F {
 		case 0:
@@ -268,24 +276,28 @@ func (e *Emulator) Exec(opcode uint16) {
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[y]
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 1:
 			// 	Sets VX to VX or VY. (Bitwise OR operation)
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] | e.V[y]
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 2:
 			// Sets VX to VX and VY. (Bitwise AND operation)
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] & e.V[y]
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 3:
 			// Sets VX to VX xor VY.
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] ^ e.V[y]
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 4:
 			// Add the value of register VY to register VX
 			// Set VF to 01 if a carry occurs
@@ -299,6 +311,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			}
 			e.V[x] += e.V[y]
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 5:
 			// Subtract the value of register VY from register VX
 			// Set VF to 00 if a borrow occurs
@@ -312,6 +325,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			}
 			e.V[x] -= e.V[y]
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 6:
 			// Store the value of register VY shifted right one bit in register VX¹
 			// Set register VF to the least significant bit prior to the shift
@@ -320,6 +334,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			e.V[0xF] = uint8(opcode & 0x0001)
 			e.V[x] >>= 1
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 7:
 			// Set register VX to the value of VY minus VX
 			// Set VF to 00 if a borrow occurs
@@ -333,6 +348,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			}
 			e.V[x] = e.V[y] - e.V[x]
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0xE:
 			// Store the value of register VY shifted left one bit in register VX¹
 			// Set register VF to the most significant bit prior to the shift
@@ -341,8 +357,9 @@ func (e *Emulator) Exec(opcode uint16) {
 			e.V[0xF] = uint8(opcode & 0x0001)
 			e.V[x] <<= 1
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		default:
-			log.Fatalf("Unexpected opcode 0x%x", opcode)
+			log.Fatalf("Unexpected opcode 0x%x\n", opcode)
 		}
 	case 0x9000:
 		x := opcode & 0x0F00 >> 8
@@ -352,16 +369,20 @@ func (e *Emulator) Exec(opcode uint16) {
 		} else {
 			e.next()
 		}
+		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0xA000:
 		// LD: Sets I to the address NNN.
 		e.I = opcode & 0x0FFF
 		e.next()
+		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0xB000:
 		e.Pc = opcode&0x0FFF + uint16(e.V[0])
+		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0xC000:
 		x := opcode & 0x0F00 >> 8
 		mask := opcode & 0x00FF
 		e.V[x] = uint8(rand.Intn(256)) & uint8(mask)
+		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0xD000:
 		vx := e.V[opcode&0x0F00>>8]
 		vy := e.V[opcode&0x00F0>>4]
@@ -383,6 +404,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		}
 		e.shouldDraw = true
 		e.next()
+		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0xE000:
 		switch opcode & 0x00FF {
 		case 0x9E:
@@ -393,6 +415,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			} else {
 				e.next()
 			}
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0xA1:
 			x := opcode & 0x0F00 >> 8
 			key := rune(e.V[x])
@@ -401,6 +424,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			} else {
 				e.next()
 			}
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		}
 	case 0xF000:
 		switch opcode & 0x00FF {
@@ -408,49 +432,58 @@ func (e *Emulator) Exec(opcode uint16) {
 			x := opcode & 0x0F00 >> 8
 			e.V[x] = e.delayTimer
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x0A:
 			//pass
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x15:
 			x := opcode & 0x0F00 >> 8
 			e.delayTimer = e.V[x]
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x18:
 			x := opcode & 0x0F00 >> 8
 			e.soundTimer = e.V[x]
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x1E:
 			x := opcode & 0x0F00 >> 8
 			e.I += uint16(e.V[x])
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x29:
 			// 0xFX29 Sets I to the location of the sprite for the character in VX.
 			// Characters 0-F (in hexadecimal) are represented by a 4x5 font
 			vx := e.V[opcode&0x0F00>>8]
 			e.I = uint16(vx) * 5
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x33:
 			x := opcode & 0x0F00 >> 8
 			e.Memory[e.I] = e.V[x] / 100
 			e.Memory[e.I+1] = (e.V[x] / 10) % 10
 			e.Memory[e.I+2] = (e.V[x] % 100) % 10
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x55:
 			x := opcode & 0x0F00 >> 8
 			for n := 0; n <= int(x)+1; n++ {
 				e.Memory[int(e.I)+n] = e.V[x]
 			}
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x65:
 			x := opcode & 0x0F00 >> 8
 			for n := 0; n <= int(x)+1; n++ {
 				e.V[x] = e.Memory[int(e.I)+n]
 			}
 			e.next()
+			log.Printf("Exec opcode 0x%x\n", opcode)
 		default:
-			log.Fatalf("Unexpected opcode 0x%x", opcode)
+			log.Fatalf("Unexpected opcode 0x%x\n", opcode)
 		}
 	default:
-		log.Fatalf("Unexpected opcode 0x%x", opcode)
+		log.Fatalf("Unexpected opcode 0x%x\n", opcode)
 	}
 }
 
