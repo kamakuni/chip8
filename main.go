@@ -106,7 +106,7 @@ func (e *Emulator) InitDisplay() {
 	}
 	//defer sdl.Quit()
 
-	window, err := sdl.CreateWindow("Input", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 640, 320, sdl.WINDOW_SHOWN)
+	window, err := sdl.CreateWindow("CHIP-8", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 640, 320, sdl.WINDOW_SHOWN)
 	if err != nil {
 		fmt.Fprint(os.Stderr, "Failed to create renderer: %s\n", err)
 		os.Exit(2)
@@ -235,6 +235,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		// skips the next instruction if VX equals NN.
 		// (Usually the next instruction is a jump to skip a code block)
 		x := opcode & 0x0F00 >> 8
+		e.next()
 		if int(e.V[x]) == int(opcode&0x00FF) {
 			e.next()
 		}
@@ -243,6 +244,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		// skips the next instruction if VX doesn't equal NN.
 		// (Usually the next instruction is a jump to skip a code block)
 		x := opcode & 0x0F00 >> 8
+		e.next()
 		if int(e.V[x]) != int(opcode&0x00FF) {
 			e.next()
 		}
@@ -252,6 +254,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		// (Usually the next instruction is a jump to skip a code block)
 		x := opcode & 0x0F00 >> 8
 		y := opcode & 0x00F0 >> 4
+		e.next()
 		if e.V[x] == e.V[y] {
 			e.next()
 		}
