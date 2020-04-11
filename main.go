@@ -212,8 +212,8 @@ func (e *Emulator) Exec(opcode uint16) {
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x00EE:
-			e.Pc = e.Stack[e.Sp]
 			e.Sp--
+			e.Pc = e.Stack[e.Sp]
 			e.next()
 		default:
 			log.Fatalf("Unexpected opcode 0x%x\n", opcode)
@@ -224,9 +224,6 @@ func (e *Emulator) Exec(opcode uint16) {
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0x2000:
 		// CALL: Call the subroutine at address NNN
-		// Because we will need to temporary jump to address NNN,
-		// it means that we should store the current address of the program counter in the stack
-		// After storing, increase the stack pointer and set the program counter to the address NNN
 		e.Stack[e.Sp] = e.Pc
 		e.Sp++
 		e.Pc = opcode & 0x0FFF
