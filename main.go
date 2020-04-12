@@ -44,24 +44,24 @@ func NewFonts() [80]uint8 {
 	}
 }
 
-func NewKeyMap() map[rune]byte {
-	return map[rune]byte{
-		'1': 0x1,
-		'2': 0x2,
-		'3': 0x3,
-		'4': 0xc,
-		'Q': 0x4,
-		'W': 0x5,
-		'E': 0x6,
-		'R': 0xD,
-		'A': 0x7,
-		'S': 0x8,
-		'D': 0x9,
-		'F': 0xE,
-		'Z': 0xA,
-		'X': 0x0,
-		'C': 0xB,
-		'V': 0xF,
+func NewKeyMap() map[int]byte {
+	return map[int]byte{
+		sdl.SCANCODE_1: 0x1,
+		sdl.SCANCODE_2: 0x2,
+		sdl.SCANCODE_3: 0x3,
+		sdl.SCANCODE_4: 0xc,
+		sdl.SCANCODE_Q: 0x4,
+		sdl.SCANCODE_W: 0x5,
+		sdl.SCANCODE_E: 0x6,
+		sdl.SCANCODE_R: 0xd,
+		sdl.SCANCODE_A: 0x7,
+		sdl.SCANCODE_S: 0x8,
+		sdl.SCANCODE_D: 0x9,
+		sdl.SCANCODE_F: 0xe,
+		sdl.SCANCODE_Z: 0xa,
+		sdl.SCANCODE_X: 0x0,
+		sdl.SCANCODE_C: 0xb,
+		sdl.SCANCODE_V: 0xf,
 	}
 }
 
@@ -76,10 +76,10 @@ type Emulator struct {
 	soundTimer uint8         // Timer registor for sound
 	Stack      [16]uint16    // to store current pc
 	Sp         uint16        // stack pointer
-	key        [16]uint8     // to store current stats of key
+	keys       [16]bool      // to store current stats of key
+	keyMap     map[int]byte
 	shouldDraw bool
 	surface    *sdl.Surface
-	keyMap     map[rune]byte
 	window     *sdl.Window
 }
 
@@ -410,7 +410,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		switch opcode & 0x00FF {
 		case 0x9E:
 			x := opcode & 0x0F00 >> 8
-			key := rune(e.V[x])
+			key := byte(e.V[x])
 			if e.pressed(key) {
 				e.skip()
 			} else {
@@ -419,7 +419,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0xA1:
 			x := opcode & 0x0F00 >> 8
-			key := rune(e.V[x])
+			key := byte(e.V[x])
 			if !e.pressed(key) {
 				e.skip()
 			} else {
@@ -500,12 +500,20 @@ func (e *Emulator) Print() {
 	fmt.Printf("soundTimer:%v\n", e.soundTimer)
 	fmt.Printf("stack:%v\n", e.Stack)
 	fmt.Printf("sp:%v\n", e.Sp)
-	fmt.Printf("key:%v\n", e.key)
+	fmt.Printf("key:%v\n", e.keys)
 }
 
-func (e *Emulator) pressed(key rune) bool {
-	_, ok := e.keyMap[key]
-	return ok
+func (e *Emulator) pressed(key byte) bool {
+	return e.keys[key]
+}
+
+func (e *Emulator) pressedKey() byte {
+	for i, v := range e.keys {
+		if v {
+			return byte(i)
+		}
+	}
+	return 0xff
 }
 
 // https://github.com/veandco/go-sdl2-examples/blob/master/examples/keyboard-input/keyboard-input.go
@@ -536,11 +544,15 @@ func (e *Emulator) Run() (err error) {
 				os.Exit(0)
 			case *sdl.KeyboardEvent:
 				if et.Type == sdl.KEYUP {
-					fmt.Printf("keyup: %v", rune(et.Keysym.Scancode))
-					e.key[e.keyMap[rune(et.Keysym.Scancode)]] = 0
+					fmt.Printf("keyup: %v", byte(et.Keysym.Scancode))
+					if v, ok := e.keyMap[int(et.Keysym.Scancode)]; ok {
+						e.keys[v] = false
+					}
 				} else if et.Type == sdl.KEYDOWN {
-					fmt.Printf("keydown: %v", rune(et.Keysym.Scancode))
-					e.key[e.keyMap[rune(et.Keysym.Scancode)]] = 1
+					fmt.Printf("keydown: %v", byte(et.Keysym.Scancode))
+					if v, ok := e.keyMap[int(et.Keysym.Scancode)]; ok {
+						e.keys[v] = true
+					}
 				}
 			}
 		}
