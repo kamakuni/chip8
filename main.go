@@ -232,8 +232,9 @@ func (e *Emulator) Exec(opcode uint16) {
 		// skips the next instruction if VX equals NN.
 		// (Usually the next instruction is a jump to skip a code block)
 		x := opcode & 0x0F00 >> 8
-		e.next()
 		if int(e.V[x]) == int(opcode&0x00FF) {
+			e.skip()
+		} else {
 			e.next()
 		}
 		log.Printf("Exec opcode 0x%x\n", opcode)
@@ -241,8 +242,9 @@ func (e *Emulator) Exec(opcode uint16) {
 		// skips the next instruction if VX doesn't equal NN.
 		// (Usually the next instruction is a jump to skip a code block)
 		x := opcode & 0x0F00 >> 8
-		e.next()
 		if int(e.V[x]) != int(opcode&0x00FF) {
+			e.skip()
+		} else {
 			e.next()
 		}
 		log.Printf("Exec opcode 0x%x\n", opcode)
@@ -251,8 +253,9 @@ func (e *Emulator) Exec(opcode uint16) {
 		// (Usually the next instruction is a jump to skip a code block)
 		x := opcode & 0x0F00 >> 8
 		y := opcode & 0x00F0 >> 4
-		e.next()
 		if e.V[x] == e.V[y] {
+			e.skip()
+		} else {
 			e.next()
 		}
 		log.Printf("Exec opcode 0x%x\n", opcode)
@@ -435,7 +438,14 @@ func (e *Emulator) Exec(opcode uint16) {
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x0A:
-			//pass
+			for i, v := range e.keys {
+				if v {
+					x := opcode & 0x0F00 >> 8
+					e.V[x] = byte(i)
+					e.next()
+					break
+				}
+			}
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x15:
 			x := opcode & 0x0F00 >> 8
@@ -449,6 +459,11 @@ func (e *Emulator) Exec(opcode uint16) {
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x1E:
 			x := opcode & 0x0F00 >> 8
+			if e.I+uint16(e.V[x]) > 0xFFF {
+				e.V[0xF] = 1
+			} else {
+				e.V[0xF] = 0
+			}
 			e.I += uint16(e.V[x])
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
@@ -471,6 +486,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			for n := 0; n <= int(x)+1; n++ {
 				e.Memory[int(e.I)+n] = e.V[x]
 			}
+			e.I = x + 1
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x65:
@@ -478,6 +494,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			for n := 0; n <= int(x)+1; n++ {
 				e.V[x] = e.Memory[int(e.I)+n]
 			}
+			e.I = x + 1
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		default:
@@ -534,6 +551,9 @@ func (e *Emulator) Run() (err error) {
 		if e.delayTimer > 0 {
 			e.delayTimer--
 		}
+		if e.soundTimer > 0 {
+			e.soundTimer--
+		}
 		if e.shouldDraw {
 			e.draw()
 		}
@@ -556,6 +576,8 @@ func (e *Emulator) Run() (err error) {
 				}
 			}
 		}
+		// Chip8 cpu clock worked at frequency of 60Hz, so set delay to (1000/60)ms
+		sdl.Delay(1000 / 240)
 
 	}
 
