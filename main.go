@@ -357,9 +357,13 @@ func (e *Emulator) Exec(opcode uint16) {
 			// Set register VF to the most significant bit prior to the shift
 			// VY is unchanged
 			x := opcode & 0x0F00 >> 8
-			e.V[0xF] = uint8(opcode & 0x0001)
-			e.V[x] <<= 1
+			e.V[0xF] = e.V[x] >> 7
+			e.V[x] = e.V[x] << 1
 			e.next()
+			//x := opcode & 0x0F00 >> 8
+			//e.V[0xF] = uint8(opcode & 0x0001)
+			//e.V[x] <<= 1
+			//e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		default:
 			log.Fatalf("Unexpected opcode 0x%x\n", opcode)
