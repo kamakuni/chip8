@@ -397,7 +397,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		height := opcode & 0x000F
 		var pixel uint8
 		e.V[0xF] = 0
-		for yi := 0; yi < int(height); height++ {
+		for yi := 0; yi < int(height); yi++ {
 			pixel = e.Memory[int(e.I)+yi]
 			for xi := 0; xi < 8; xi++ {
 				// 1000 0000 >> xi
