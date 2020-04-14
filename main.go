@@ -487,16 +487,16 @@ func (e *Emulator) Exec(opcode uint16) {
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x55:
 			x := opcode & 0x0F00 >> 8
-			for n := 0; n <= int(x)+1; n++ {
-				e.Memory[int(e.I)+n] = e.V[x]
+			for i := 0; i < int(x)+1; i++ {
+				e.Memory[int(e.I)+i] = e.V[i]
 			}
 			e.I = x + 1
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x65:
 			x := opcode & 0x0F00 >> 8
-			for n := 0; n <= int(x)+1; n++ {
-				e.V[x] = e.Memory[int(e.I)+n]
+			for i := 0; i < int(x)+1; i++ {
+				e.V[x] = e.Memory[int(e.I)+i]
 			}
 			e.I = x + 1
 			e.next()
