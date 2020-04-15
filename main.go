@@ -485,7 +485,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			x := opcode & 0x0F00 >> 8
 			e.Memory[e.I] = e.V[x] / 100
 			e.Memory[e.I+1] = (e.V[x] / 10) % 10
-			e.Memory[e.I+2] = (e.V[x] % 100) % 10
+			e.Memory[e.I+2] = (e.V[x] % 100) / 10
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x55:
