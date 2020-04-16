@@ -186,14 +186,6 @@ func (e *Emulator) Load(filepath string) {
 	}
 }
 
-/*func (e *Emulator) Draw() {
-	for i, row := range e.Gfx {
-		for j, _ := range row {
-			e.Gfx[i][j]
-		}
-	}
-}*/
-
 func (e *Emulator) Fetch() uint16 {
 	op1 := uint16(e.Memory[int(e.Pc)])
 	op2 := uint16(e.Memory[int(e.Pc)+1])
@@ -546,13 +538,6 @@ func (e *Emulator) Run() (err error) {
 	running := true
 	for running {
 
-		/*for i, row := range e.Gfx {
-			for j := range row {
-				if j%2 == 0 {
-					e.Gfx[i][j] = 1
-				}
-			}
-		}*/
 		opcode := e.Fetch()
 		e.Exec(opcode)
 		if e.delayTimer > 0 {
@@ -605,10 +590,6 @@ func main() {
 	defer emu.DestroyDisplay()
 	emu.Load(filepath)
 	emu.Print()
-
-	//opcode := emu.Fetch()
-	//emu.Decode(opcode)
-
 	if err := emu.Run(); err != nil {
 		os.Exit(1)
 	}
