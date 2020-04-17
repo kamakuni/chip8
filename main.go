@@ -133,9 +133,11 @@ func (e *Emulator) DestroyDisplay() {
 func (e *Emulator) draw() {
 	for i, row := range e.Gfx {
 		for j := range row {
+			rect := sdl.Rect{int32(i * 10), int32(j * 10), 10, 10}
 			if e.Gfx[i][j] == 1 {
-				rect := sdl.Rect{int32(i * 10), int32(j * 10), 10, 10}
 				e.surface.FillRect(&rect, sdl.MapRGB(e.surface.Format, 255, 255, 255))
+			} else {
+				e.surface.FillRect(&rect, sdl.MapRGB(e.surface.Format, 0, 0, 0))
 			}
 		}
 	}
