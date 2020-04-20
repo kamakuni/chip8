@@ -12,7 +12,7 @@
             "mode": "auto",
             "program": "${fileDirname}",
             "env": {},
-            "args": ["roms/PONG"]
+            "args": ["roms/BRIX"]
         }
     ]
 }

@@ -66,17 +66,17 @@ func NewKeyMap() map[int]byte {
 }
 
 type Emulator struct {
-	Opcode     uint16        // two bytes opcodes
-	Memory     [4096]uint8   // 4K memory
-	V          [16]uint8     // 15 8-bit registers for general purpose and one for "carry-flag"
-	I          uint16        // index register
-	Pc         uint16        // program counter
-	Gfx        [64][32]uint8 // 2048 black or white pixels
-	delayTimer uint8         // Timer registor for general purpose
-	soundTimer uint8         // Timer registor for sound
-	Stack      [16]uint16    // to store current pc
-	Sp         uint16        // stack pointer
-	keys       [16]bool      // to store current stats of key
+	Opcode     uint16      // two bytes opcodes
+	Memory     [4096]uint8 // 4K memory
+	V          [16]uint8   // 15 8-bit registers for general purpose and one for "carry-flag"
+	I          uint16      // index register
+	Pc         uint16      // program counter
+	Gfx        [2048]uint8 // 2048 black or white pixels
+	delayTimer uint8       // Timer registor for general purpose
+	soundTimer uint8       // Timer registor for sound
+	Stack      [16]uint16  // to store current pc
+	Sp         uint16      // stack pointer
+	keys       [16]bool    // to store current stats of key
 	keyMap     map[int]byte
 	shouldDraw bool
 	surface    *sdl.Surface
@@ -131,7 +131,15 @@ func (e *Emulator) DestroyDisplay() {
 }
 
 func (e *Emulator) draw() {
-	for i, row := range e.Gfx {
+	for i := range e.Gfx {
+		rect := sdl.Rect{int32(i % 64 * 10), int32(int(i/64) * 10), 10, 10}
+		if e.Gfx[i] == 1 {
+			e.surface.FillRect(&rect, sdl.MapRGB(e.surface.Format, 200, 200, 200))
+		} else {
+			e.surface.FillRect(&rect, sdl.MapRGB(e.surface.Format, 35, 35, 35))
+		}
+	}
+	/*	for i, row := range e.Gfx {
 		for j := range row {
 			rect := sdl.Rect{int32(i * 10), int32(j * 10), 10, 10}
 			if e.Gfx[i][j] == 1 {
@@ -140,7 +148,7 @@ func (e *Emulator) draw() {
 				e.surface.FillRect(&rect, sdl.MapRGB(e.surface.Format, 0, 0, 0))
 			}
 		}
-	}
+	}*/
 	e.window.UpdateSurface()
 }
 
@@ -151,14 +159,6 @@ func (e *Emulator) next() {
 func (e *Emulator) skip() {
 	e.Pc += 4
 }
-
-// Load loads data to memory
-/*func (e *Emulator) Load(data []byte) {
-	for i, b := range data {
-		e.Memory[int(e.Pc)+i] = b
-		fmt.Printf("load byte:0x%x", e.Memory[int(e.Pc)+i])
-	}
-}*/
 
 func (e *Emulator) Load(filepath string) {
 	file, err := os.Open(filepath)
@@ -201,7 +201,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		switch opcode & 0x00FF {
 		case 0x00E0:
 			// CLS: Clear the screen
-			e.Gfx = [64][32]uint8{}
+			e.Gfx = [2048]uint8{}
 			e.shouldDraw = true
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
@@ -328,7 +328,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			// Set register VF to the least significant bit prior to the shift
 			// VY is unchanged
 			x := opcode & 0x0F00 >> 8
-			e.V[0xF] = uint8(opcode & 0x0001)
+			e.V[0xF] = uint8(opcode & 0x1)
 			e.V[x] >>= 1
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
@@ -396,11 +396,11 @@ func (e *Emulator) Exec(opcode uint16) {
 			for xi := 0; xi < 8; xi++ {
 				// 1000 0000 >> xi
 				if pixel&(0x80>>uint8(xi)) != 0 {
-					if e.Gfx[int(vx)+xi][int(vy)+yi] == 1 {
+					if e.Gfx[(int(vx)+xi+((int(vy)+yi)*64))] == 1 {
 						// when collision detected
 						e.V[0xF] = 1
 					}
-					e.Gfx[int(vx)+xi][int(vy)+yi] ^= 1
+					e.Gfx[int(vx)+xi+((int(vy)+yi)*64)] ^= 1
 				}
 			}
 		}
@@ -479,7 +479,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			x := opcode & 0x0F00 >> 8
 			e.Memory[e.I] = e.V[x] / 100
 			e.Memory[e.I+1] = (e.V[x] / 10) % 10
-			e.Memory[e.I+2] = (e.V[x] % 100) / 10
+			e.Memory[e.I+2] = e.V[x] % 10
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x55:
@@ -487,7 +487,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			for i := 0; i < int(x)+1; i++ {
 				e.Memory[int(e.I)+i] = e.V[i]
 			}
-			e.I = x + 1
+			//e.I = x + 1
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x65:
@@ -495,7 +495,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			for i := 0; i < int(x)+1; i++ {
 				e.V[i] = e.Memory[int(e.I)+i]
 			}
-			e.I = x + 1
+			//e.I = x + 1
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		default:
@@ -571,7 +571,7 @@ func (e *Emulator) Run() (err error) {
 			}
 		}
 		// Chip8 cpu clock worked at frequency of 60Hz, so set delay to (1000/60)ms
-		sdl.Delay(1000 / 240)
+		sdl.Delay(1000 / 60)
 
 	}
 
