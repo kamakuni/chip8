@@ -132,7 +132,9 @@ func (e *Emulator) DestroyDisplay() {
 
 func (e *Emulator) draw() {
 	for i := range e.Gfx {
-		rect := sdl.Rect{int32(i % 64 * 10), int32(int(i/64) * 10), 10, 10}
+		x := int32(i % 64)
+		y := int32(int(i / 64))
+		rect := sdl.Rect{x * 10, y * 10, 10, 10}
 		if e.Gfx[i] == 1 {
 			e.surface.FillRect(&rect, sdl.MapRGB(e.surface.Format, 200, 200, 200))
 		} else {
@@ -301,7 +303,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			// Set VF to 00 if a carry does not occur
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
-			if e.V[x]+e.V[y] > 0xFF {
+			if uint16(e.V[x])+uint16(e.V[y]) > 0xFF {
 				e.V[0xF] = 0x1
 			} else {
 				e.V[0xF] = 0x0
@@ -328,7 +330,11 @@ func (e *Emulator) Exec(opcode uint16) {
 			// Set register VF to the least significant bit prior to the shift
 			// VY is unchanged
 			x := opcode & 0x0F00 >> 8
-			e.V[0xF] = uint8(opcode & 0x1)
+			if (e.V[x] & 0x01) == 1 {
+				e.V[0xF] = 0x1
+			} else {
+				e.V[0xF] = 0x0
+			}
 			e.V[x] >>= 1
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
@@ -351,8 +357,12 @@ func (e *Emulator) Exec(opcode uint16) {
 			// Set register VF to the most significant bit prior to the shift
 			// VY is unchanged
 			x := opcode & 0x0F00 >> 8
-			e.V[0xF] = e.V[x] >> 7
-			e.V[x] = e.V[x] << 1
+			if e.V[x]>>7 == 1 {
+				e.V[0xF] = 0x1
+			} else {
+				e.V[0xF] = 0x0
+			}
+			e.V[x] <<= 1
 			e.next()
 			//x := opcode & 0x0F00 >> 8
 			//e.V[0xF] = uint8(opcode & 0x0001)
@@ -382,7 +392,7 @@ func (e *Emulator) Exec(opcode uint16) {
 	case 0xC000:
 		x := opcode & 0x0F00 >> 8
 		mask := opcode & 0x00FF
-		e.V[x] = uint8(rand.Intn(256)) & uint8(mask)
+		e.V[x] = uint8(rand.Uint32() & uint32(mask))
 		e.next()
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0xD000:
@@ -399,6 +409,8 @@ func (e *Emulator) Exec(opcode uint16) {
 					if e.Gfx[(int(vx)+xi+((int(vy)+yi)*64))] == 1 {
 						// when collision detected
 						e.V[0xF] = 1
+					} else {
+						e.V[0xF] = 0
 					}
 					e.Gfx[int(vx)+xi+((int(vy)+yi)*64)] ^= 1
 				}
