@@ -472,11 +472,11 @@ func (e *Emulator) Exec(opcode uint16) {
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x1E:
 			x := opcode & 0x0F00 >> 8
-			if e.I+uint16(e.V[x]) > 0xFFF {
+			/*if e.I+uint16(e.V[x]) > 0xFFF {
 				e.V[0xF] = 1
 			} else {
 				e.V[0xF] = 0
-			}
+			}*/
 			e.I += uint16(e.V[x])
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
