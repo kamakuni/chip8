@@ -399,20 +399,29 @@ func (e *Emulator) Exec(opcode uint16) {
 		vx := e.V[opcode&0x0F00>>8]
 		vy := e.V[opcode&0x00F0>>4]
 		height := opcode & 0x000F
-		var pixel uint8
 		e.V[0xF] = 0
 		for yi := 0; yi < int(height); yi++ {
-			pixel = e.Memory[int(e.I)+yi]
+			row := e.Memory[int(e.I)+yi]
 			for xi := 0; xi < 8; xi++ {
 				// 1000 0000 >> xi
-				if pixel&(0x80>>uint8(xi)) != 0 {
-					if e.Gfx[(int(vx)+xi+((int(vy)+yi)*64))] == 1 {
+				if row&(0x80>>uint8(xi)) != 0 {
+					x := int(vx) + xi
+					y := int(vy) + yi
+					// allow for wrapping
+					// https://www.reddit.com/r/EmuDev/comments/aar9nb/chip_8_emulator_collision_detection_not_working/
+					if x >= 64 {
+						x %= 64
+					}
+					if y >= 32 {
+						y %= 32
+					}
+					if e.Gfx[x+y*64] == 1 {
 						// when collision detected
 						e.V[0xF] = 1
 					} else {
 						e.V[0xF] = 0
 					}
-					e.Gfx[int(vx)+xi+((int(vy)+yi)*64)] ^= 1
+					e.Gfx[x+y*64] ^= 1
 				}
 			}
 		}
@@ -583,7 +592,7 @@ func (e *Emulator) Run() (err error) {
 			}
 		}
 		// Chip8 cpu clock worked at frequency of 60Hz, so set delay to (1000/60)ms
-		sdl.Delay(1000 / 60)
+		sdl.Delay(120 / 60)
 
 	}
 
