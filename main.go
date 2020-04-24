@@ -228,6 +228,8 @@ func (e *Emulator) Exec(opcode uint16) {
 		// skips the next instruction if VX equals NN.
 		// (Usually the next instruction is a jump to skip a code block)
 		x := opcode & 0x0F00 >> 8
+		log.Printf("VF: %v\n", e.V[x])
+		log.Printf("NN: %v\n", opcode&0x00FF)
 		if int(e.V[x]) == int(opcode&0x00FF) {
 			e.skip()
 		} else {
@@ -258,6 +260,9 @@ func (e *Emulator) Exec(opcode uint16) {
 	case 0x6000:
 		// Sets VX to NN.
 		x := opcode & 0x0F00 >> 8
+		if x == 0 && uint8(opcode&0x00FF) == 1 {
+			log.Printf("VX %v", uint8(opcode&0x00FF))
+		}
 		e.V[x] = uint8(opcode & 0x00FF)
 		e.next()
 		log.Printf("Exec opcode 0x%x\n", opcode)
@@ -317,7 +322,10 @@ func (e *Emulator) Exec(opcode uint16) {
 			// Set VF to 01 if a borrow does not occur
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
-			if e.V[x]-e.V[y] < 0 {
+			if x == 0 && y == 7 {
+				log.Println("SUB")
+			}
+			if e.V[x] < e.V[y] {
 				e.V[0xF] = 0x0
 			} else {
 				e.V[0xF] = 0x1
