@@ -141,16 +141,6 @@ func (e *Emulator) draw() {
 			e.surface.FillRect(&rect, sdl.MapRGB(e.surface.Format, 35, 35, 35))
 		}
 	}
-	/*	for i, row := range e.Gfx {
-		for j := range row {
-			rect := sdl.Rect{int32(i * 10), int32(j * 10), 10, 10}
-			if e.Gfx[i][j] == 1 {
-				e.surface.FillRect(&rect, sdl.MapRGB(e.surface.Format, 255, 255, 255))
-			} else {
-				e.surface.FillRect(&rect, sdl.MapRGB(e.surface.Format, 0, 0, 0))
-			}
-		}
-	}*/
 	e.window.UpdateSurface()
 }
 
@@ -165,23 +155,20 @@ func (e *Emulator) skip() {
 func (e *Emulator) Load(filepath string) {
 	file, err := os.Open(filepath)
 	if err != nil {
-		// TODO:logging
-		panic(err)
+		log.Fatalln(err)
 	}
 	defer file.Close()
 
 	stat, err := file.Stat()
 	if err != nil {
-		// TODO:logging
-		panic(err)
+		log.Fatalln(err)
 	}
 	fmt.Printf("file size:%v\n", stat.Size())
 
 	buf := make([]byte, stat.Size())
 	err = binary.Read(file, binary.BigEndian, &buf)
 	if err != nil {
-		// TODO:logging
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	for i, b := range buf {
@@ -322,9 +309,6 @@ func (e *Emulator) Exec(opcode uint16) {
 			// Set VF to 01 if a borrow does not occur
 			x := opcode & 0x0F00 >> 8
 			y := opcode & 0x00F0 >> 4
-			if x == 0 && y == 7 {
-				log.Println("SUB")
-			}
 			if e.V[x] < e.V[y] {
 				e.V[0xF] = 0x0
 			} else {
@@ -372,10 +356,6 @@ func (e *Emulator) Exec(opcode uint16) {
 			}
 			e.V[x] <<= 1
 			e.next()
-			//x := opcode & 0x0F00 >> 8
-			//e.V[0xF] = uint8(opcode & 0x0001)
-			//e.V[x] <<= 1
-			//e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		default:
 			log.Fatalf("Unexpected opcode 0x%x\n", opcode)
@@ -489,11 +469,6 @@ func (e *Emulator) Exec(opcode uint16) {
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x1E:
 			x := opcode & 0x0F00 >> 8
-			/*if e.I+uint16(e.V[x]) > 0xFFF {
-				e.V[0xF] = 1
-			} else {
-				e.V[0xF] = 0
-			}*/
 			e.I += uint16(e.V[x])
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
@@ -516,7 +491,6 @@ func (e *Emulator) Exec(opcode uint16) {
 			for i := 0; i < int(x)+1; i++ {
 				e.Memory[int(e.I)+i] = e.V[i]
 			}
-			//e.I = x + 1
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x65:
@@ -524,7 +498,6 @@ func (e *Emulator) Exec(opcode uint16) {
 			for i := 0; i < int(x)+1; i++ {
 				e.V[i] = e.Memory[int(e.I)+i]
 			}
-			//e.I = x + 1
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		default:
@@ -600,7 +573,7 @@ func (e *Emulator) Run() (err error) {
 			}
 		}
 		// Chip8 cpu clock worked at frequency of 60Hz, so set delay to (1000/60)ms
-		sdl.Delay(120 / 60)
+		sdl.Delay(1000 / 60)
 
 	}
 
@@ -609,10 +582,8 @@ func (e *Emulator) Run() (err error) {
 
 func main() {
 
-	fmt.Println("start")
 	if len(os.Args) != 2 {
-		// TODO:logging
-		panic(nil)
+		log.Fatalln("no ROM file")
 	}
 	filepath := os.Args[1]
 	fonts := NewFonts()
@@ -620,7 +591,6 @@ func main() {
 	emu.InitDisplay()
 	defer emu.DestroyDisplay()
 	emu.Load(filepath)
-	emu.Print()
 	if err := emu.Run(); err != nil {
 		os.Exit(1)
 	}
