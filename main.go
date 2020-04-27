@@ -152,6 +152,10 @@ func (e *Emulator) skip() {
 	e.Pc += 4
 }
 
+func (e *Emulator) jump(addr uint16) {
+	e.Pc = addr
+}
+
 func (e *Emulator) Load(filepath string) {
 	file, err := os.Open(filepath)
 	if err != nil {
