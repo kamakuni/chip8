@@ -152,8 +152,8 @@ func (e *Emulator) skip() {
 	e.Pc += 4
 }
 
-func (e *Emulator) jump(addr uint16) {
-	e.Pc = addr
+func (e *Emulator) jump(next uint16) {
+	e.Pc = next
 }
 
 func (e *Emulator) Load(filepath string) {
