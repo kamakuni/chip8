@@ -156,6 +156,18 @@ func (e *Emulator) jump(next uint16) {
 	e.Pc = next
 }
 
+func (e *Emulator) nnn(opcode uint16) uint16 {
+	return opcode & 0x0FFF
+}
+
+func (e *Emulator) x(opcode uint16) uint16 {
+	return opcode & 0x0F00 >> 8
+}
+
+func (e *Emulator) y(opcode uint16) uint16 {
+	return
+}
+
 func (e *Emulator) Load(filepath string) {
 	file, err := os.Open(filepath)
 	if err != nil {
@@ -207,18 +219,18 @@ func (e *Emulator) Exec(opcode uint16) {
 		}
 	case 0x1000:
 		// Goto NNN: Jump to address NNN
-		e.Pc = opcode & 0x0FFF
+		e.Pc = e.nnn(opcode)
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0x2000:
 		// CALL: Call the subroutine at address NNN
 		e.Stack[e.Sp] = e.Pc
 		e.Sp++
-		e.Pc = opcode & 0x0FFF
+		e.Pc = e.nnn(opcode)
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0x3000:
 		// skips the next instruction if VX equals NN.
 		// (Usually the next instruction is a jump to skip a code block)
-		x := opcode & 0x0F00 >> 8
+		x := e.x(opcode)
 		log.Printf("VF: %v\n", e.V[x])
 		log.Printf("NN: %v\n", opcode&0x00FF)
 		if int(e.V[x]) == int(opcode&0x00FF) {
@@ -230,7 +242,7 @@ func (e *Emulator) Exec(opcode uint16) {
 	case 0x4000:
 		// skips the next instruction if VX doesn't equal NN.
 		// (Usually the next instruction is a jump to skip a code block)
-		x := opcode & 0x0F00 >> 8
+		x := e.x(opcode)
 		if int(e.V[x]) != int(opcode&0x00FF) {
 			e.skip()
 		} else {
@@ -240,7 +252,7 @@ func (e *Emulator) Exec(opcode uint16) {
 	case 0x5000:
 		// skips the next instruction if VX equals VY.
 		// (Usually the next instruction is a jump to skip a code block)
-		x := opcode & 0x0F00 >> 8
+		x := e.x(opcode)
 		y := opcode & 0x00F0 >> 4
 		if e.V[x] == e.V[y] {
 			e.skip()
@@ -250,7 +262,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0x6000:
 		// Sets VX to NN.
-		x := opcode & 0x0F00 >> 8
+		x := e.x(opcode)
 		if x == 0 && uint8(opcode&0x00FF) == 1 {
 			log.Printf("VX %v", uint8(opcode&0x00FF))
 		}
@@ -259,7 +271,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0x7000:
 		// 	Adds NN to VX. (Carry flag is not changed)
-		x := opcode & 0x0F00 >> 8
+		x := e.x(opcode)
 		e.V[x] += uint8(opcode & 0x00FF)
 		e.next()
 		log.Printf("Exec opcode 0x%x\n", opcode)
@@ -267,28 +279,28 @@ func (e *Emulator) Exec(opcode uint16) {
 		switch opcode & 0x000F {
 		case 0:
 			// Sets VX to the value of VY.
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[y]
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 1:
 			// 	Sets VX to VX or VY. (Bitwise OR operation)
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] | e.V[y]
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 2:
 			// Sets VX to VX and VY. (Bitwise AND operation)
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] & e.V[y]
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 3:
 			// Sets VX to VX xor VY.
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			y := opcode & 0x00F0 >> 4
 			e.V[x] = e.V[x] ^ e.V[y]
 			e.next()
@@ -297,7 +309,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			// Add the value of register VY to register VX
 			// Set VF to 01 if a carry occurs
 			// Set VF to 00 if a carry does not occur
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			y := opcode & 0x00F0 >> 4
 			if uint16(e.V[x])+uint16(e.V[y]) > 0xFF {
 				e.V[0xF] = 0x1
@@ -311,7 +323,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			// Subtract the value of register VY from register VX
 			// Set VF to 00 if a borrow occurs
 			// Set VF to 01 if a borrow does not occur
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			y := opcode & 0x00F0 >> 4
 			if e.V[x] < e.V[y] {
 				e.V[0xF] = 0x0
@@ -325,7 +337,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			// Store the value of register VY shifted right one bit in register VX¹
 			// Set register VF to the least significant bit prior to the shift
 			// VY is unchanged
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			if (e.V[x] & 0x01) == 1 {
 				e.V[0xF] = 0x1
 			} else {
@@ -338,7 +350,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			// Set register VX to the value of VY minus VX
 			// Set VF to 00 if a borrow occurs
 			// Set VF to 01 if a borrow does not occur
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			y := opcode & 0x00F0 >> 4
 			if e.V[y]-e.V[x] < 0 {
 				e.V[0xF] = 0x0
@@ -352,7 +364,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			// Store the value of register VY shifted left one bit in register VX¹
 			// Set register VF to the most significant bit prior to the shift
 			// VY is unchanged
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			if e.V[x]>>7 == 1 {
 				e.V[0xF] = 0x1
 			} else {
@@ -365,7 +377,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			log.Fatalf("Unexpected opcode 0x%x\n", opcode)
 		}
 	case 0x9000:
-		x := opcode & 0x0F00 >> 8
+		x := e.x(opcode)
 		y := opcode & 0x00F0 >> 4
 		if e.V[x] != e.V[y] {
 			e.skip()
@@ -375,20 +387,20 @@ func (e *Emulator) Exec(opcode uint16) {
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0xA000:
 		// LD: Sets I to the address NNN.
-		e.I = opcode & 0x0FFF
+		e.I = e.nnn(opcode)
 		e.next()
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0xB000:
-		e.Pc = opcode&0x0FFF + uint16(e.V[0])
+		e.Pc = e.nnn(opcode) + uint16(e.V[0])
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0xC000:
-		x := opcode & 0x0F00 >> 8
+		x := e.x(opcode)
 		mask := opcode & 0x00FF
 		e.V[x] = uint8(rand.Uint32() & uint32(mask))
 		e.next()
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0xD000:
-		vx := e.V[opcode&0x0F00>>8]
+		vx := e.V[e.x(opcode)]
 		vy := e.V[opcode&0x00F0>>4]
 		height := opcode & 0x000F
 		e.V[0xF] = 0
@@ -423,7 +435,7 @@ func (e *Emulator) Exec(opcode uint16) {
 	case 0xE000:
 		switch opcode & 0x00FF {
 		case 0x9E:
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			key := byte(e.V[x])
 			if e.pressed(key) {
 				e.skip()
@@ -432,7 +444,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			}
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0xA1:
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			key := byte(e.V[x])
 			if !e.pressed(key) {
 				e.skip()
@@ -444,7 +456,7 @@ func (e *Emulator) Exec(opcode uint16) {
 	case 0xF000:
 		switch opcode & 0x00FF {
 		case 0x07:
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			e.V[x] = e.delayTimer
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
@@ -452,7 +464,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			pressed := false
 			for i, v := range e.keys {
 				if v {
-					x := opcode & 0x0F00 >> 8
+					x := e.x(opcode)
 					e.V[x] = byte(i)
 					pressed = true
 				}
@@ -462,43 +474,43 @@ func (e *Emulator) Exec(opcode uint16) {
 			}
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x15:
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			e.delayTimer = e.V[x]
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x18:
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			e.soundTimer = e.V[x]
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x1E:
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			e.I += uint16(e.V[x])
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x29:
 			// 0xFX29 Sets I to the location of the sprite for the character in VX.
 			// Characters 0-F (in hexadecimal) are represented by a 4x5 font
-			vx := e.V[opcode&0x0F00>>8]
+			vx := e.V[e.x(opcode)]
 			e.I = uint16(vx) * 5
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x33:
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			e.Memory[e.I] = e.V[x] / 100
 			e.Memory[e.I+1] = (e.V[x] / 10) % 10
 			e.Memory[e.I+2] = e.V[x] % 10
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x55:
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			for i := 0; i < int(x)+1; i++ {
 				e.Memory[int(e.I)+i] = e.V[i]
 			}
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x65:
-			x := opcode & 0x0F00 >> 8
+			x := e.x(opcode)
 			for i := 0; i < int(x)+1; i++ {
 				e.V[i] = e.Memory[int(e.I)+i]
 			}
