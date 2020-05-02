@@ -165,7 +165,7 @@ func (e *Emulator) x(opcode uint16) uint16 {
 }
 
 func (e *Emulator) y(opcode uint16) uint16 {
-	return
+	return opcode & 0x00F0 >> 4
 }
 
 func (e *Emulator) Load(filepath string) {
@@ -253,7 +253,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		// skips the next instruction if VX equals VY.
 		// (Usually the next instruction is a jump to skip a code block)
 		x := e.x(opcode)
-		y := opcode & 0x00F0 >> 4
+		y := e.y(opcode)
 		if e.V[x] == e.V[y] {
 			e.skip()
 		} else {
@@ -280,28 +280,28 @@ func (e *Emulator) Exec(opcode uint16) {
 		case 0:
 			// Sets VX to the value of VY.
 			x := e.x(opcode)
-			y := opcode & 0x00F0 >> 4
+			y := e.y(opcode)
 			e.V[x] = e.V[y]
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 1:
 			// 	Sets VX to VX or VY. (Bitwise OR operation)
 			x := e.x(opcode)
-			y := opcode & 0x00F0 >> 4
+			y := e.y(opcode)
 			e.V[x] = e.V[x] | e.V[y]
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 2:
 			// Sets VX to VX and VY. (Bitwise AND operation)
 			x := e.x(opcode)
-			y := opcode & 0x00F0 >> 4
+			y := e.y(opcode)
 			e.V[x] = e.V[x] & e.V[y]
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 3:
 			// Sets VX to VX xor VY.
 			x := e.x(opcode)
-			y := opcode & 0x00F0 >> 4
+			y := e.y(opcode)
 			e.V[x] = e.V[x] ^ e.V[y]
 			e.next()
 			log.Printf("Exec opcode 0x%x\n", opcode)
@@ -310,7 +310,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			// Set VF to 01 if a carry occurs
 			// Set VF to 00 if a carry does not occur
 			x := e.x(opcode)
-			y := opcode & 0x00F0 >> 4
+			y := e.y(opcode)
 			if uint16(e.V[x])+uint16(e.V[y]) > 0xFF {
 				e.V[0xF] = 0x1
 			} else {
@@ -324,7 +324,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			// Set VF to 00 if a borrow occurs
 			// Set VF to 01 if a borrow does not occur
 			x := e.x(opcode)
-			y := opcode & 0x00F0 >> 4
+			y := e.y(opcode)
 			if e.V[x] < e.V[y] {
 				e.V[0xF] = 0x0
 			} else {
@@ -351,7 +351,7 @@ func (e *Emulator) Exec(opcode uint16) {
 			// Set VF to 00 if a borrow occurs
 			// Set VF to 01 if a borrow does not occur
 			x := e.x(opcode)
-			y := opcode & 0x00F0 >> 4
+			y := e.y(opcode)
 			if e.V[y]-e.V[x] < 0 {
 				e.V[0xF] = 0x0
 			} else {
@@ -378,7 +378,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		}
 	case 0x9000:
 		x := e.x(opcode)
-		y := opcode & 0x00F0 >> 4
+		y := e.y(opcode)
 		if e.V[x] != e.V[y] {
 			e.skip()
 		} else {
@@ -401,7 +401,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0xD000:
 		vx := e.V[e.x(opcode)]
-		vy := e.V[opcode&0x00F0>>4]
+		vy := e.V[e.y(opcode)]
 		height := opcode & 0x000F
 		e.V[0xF] = 0
 		for yi := 0; yi < int(height); yi++ {
