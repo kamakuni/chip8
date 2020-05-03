@@ -160,6 +160,10 @@ func (e *Emulator) nnn(opcode uint16) uint16 {
 	return opcode & 0x0FFF
 }
 
+func (e *Emulator) nn(opcode uint16) uint16 {
+	return opcode & 0x00FF
+}
+
 func (e *Emulator) x(opcode uint16) uint16 {
 	return opcode & 0x0F00 >> 8
 }
@@ -232,8 +236,8 @@ func (e *Emulator) Exec(opcode uint16) {
 		// (Usually the next instruction is a jump to skip a code block)
 		x := e.x(opcode)
 		log.Printf("VF: %v\n", e.V[x])
-		log.Printf("NN: %v\n", opcode&0x00FF)
-		if int(e.V[x]) == int(opcode&0x00FF) {
+		log.Printf("NN: %v\n", e.nn(opcode))
+		if int(e.V[x]) == int(e.nn(opcode)) {
 			e.skip()
 		} else {
 			e.next()
@@ -243,7 +247,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		// skips the next instruction if VX doesn't equal NN.
 		// (Usually the next instruction is a jump to skip a code block)
 		x := e.x(opcode)
-		if int(e.V[x]) != int(opcode&0x00FF) {
+		if int(e.V[x]) != int(e.nn(opcode)) {
 			e.skip()
 		} else {
 			e.next()
@@ -263,16 +267,16 @@ func (e *Emulator) Exec(opcode uint16) {
 	case 0x6000:
 		// Sets VX to NN.
 		x := e.x(opcode)
-		if x == 0 && uint8(opcode&0x00FF) == 1 {
-			log.Printf("VX %v", uint8(opcode&0x00FF))
+		if x == 0 && uint8(e.nn(opcode)) == 1 {
+			log.Printf("VX %v", uint8(e.nn(opcode)))
 		}
-		e.V[x] = uint8(opcode & 0x00FF)
+		e.V[x] = uint8(e.nn(opcode))
 		e.next()
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0x7000:
 		// 	Adds NN to VX. (Carry flag is not changed)
 		x := e.x(opcode)
-		e.V[x] += uint8(opcode & 0x00FF)
+		e.V[x] += uint8(e.nn(opcode))
 		e.next()
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0x8000:
@@ -395,7 +399,7 @@ func (e *Emulator) Exec(opcode uint16) {
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0xC000:
 		x := e.x(opcode)
-		mask := opcode & 0x00FF
+		mask := e.nn(opcode)
 		e.V[x] = uint8(rand.Uint32() & uint32(mask))
 		e.next()
 		log.Printf("Exec opcode 0x%x\n", opcode)
