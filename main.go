@@ -216,20 +216,23 @@ func (e *Emulator) Exec(opcode uint16) {
 			log.Printf("Exec opcode 0x%x\n", opcode)
 		case 0x00EE:
 			e.Sp--
-			e.Pc = e.Stack[e.Sp]
+			//e.Pc = e.Stack[e.Sp]
+			e.jump(e.Stack[e.Sp])
 			e.next()
 		default:
 			log.Fatalf("Unexpected opcode 0x%x\n", opcode)
 		}
 	case 0x1000:
 		// Goto NNN: Jump to address NNN
-		e.Pc = e.nnn(opcode)
+		//e.Pc = e.nnn(opcode)
+		e.jump(e.nnn(opcode))
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0x2000:
 		// CALL: Call the subroutine at address NNN
 		e.Stack[e.Sp] = e.Pc
 		e.Sp++
-		e.Pc = e.nnn(opcode)
+		//e.Pc = e.nnn(opcode)
+		e.jump(e.nnn(opcode))
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0x3000:
 		// skips the next instruction if VX equals NN.
@@ -395,7 +398,8 @@ func (e *Emulator) Exec(opcode uint16) {
 		e.next()
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0xB000:
-		e.Pc = e.nnn(opcode) + uint16(e.V[0])
+		//e.Pc = e.nnn(opcode) + uint16(e.V[0])
+		e.jump(e.nnn(opcode) + uint16(e.V[0]))
 		log.Printf("Exec opcode 0x%x\n", opcode)
 	case 0xC000:
 		x := e.x(opcode)
